@@ -43,13 +43,16 @@ float ease(float t) {
     return t * t * (3 - 2 * t);
 }
 
-void drawHorse(float x, float rear, float phase, float run, float landing) {
+void drawHorse(float x, float rear, float phase, float run, float crouch) {
     const float angle = -0.72f * rear + 0.035f * sinf(phase) * run;
     const float c = cosf(angle), s = sinf(angle);
-    const float bounce = -2.5f * fmaxf(0, sinf(phase)) * run + landing;
+    // Rotate around the haunches, not the feet: keep the hips above their support.
+    const float shiftX = -12*s + rear;
+    const float bounce = -2.5f * fmaxf(0, sinf(phase)) * run +
+        12*(c-1) + 2*crouch - rear;
     auto pixel = [&](float px, float py) {
         const float dx = (px - 7) * 1.5f, dy = (py - 18) * 1.5f;
-        const int sx = lroundf(x + dx * c - dy * s);
+        const int sx = lroundf(x + shiftX + dx * c - dy * s);
         const int sy = lroundf(49 + bounce + dx * s + dy * c);
         if (sx >= 0 && sx < 127 && sy >= 14 && sy < 51)
             oled.drawBox(sx, sy, 2, 2);
@@ -73,11 +76,26 @@ void drawHorse(float x, float rear, float phase, float run, float landing) {
         float hoofX = hip + 5*swing;
         float hoofY = 18 - 5*tuck;
         if (front) {
-            // Fold the forelegs at the knee while rearing, not rigid rotation.
-            kneeX += 3*rear;
-            kneeY -= 2*rear;
-            hoofX = hoofX*(1-rear) + (hip+1)*rear;
-            hoofY = hoofY*(1-rear) + 12*rear;
+            // Paw lightly with the forelegs while balancing in the rear.
+            const float paw = sinf(phase + (leg - 2) * 1.7f) * rear;
+            kneeX += 3*rear + 1.1f*paw;
+            kneeY -= 2*rear + 0.6f*fabsf(paw);
+            hoofX = hoofX*(1-rear) + (hip+1 + 1.4f*paw)*rear;
+            hoofY = hoofY*(1-rear) + (12 - 0.8f*paw)*rear;
+        } else {
+            // Slight flex only: keep the supporting legs almost straight.
+
+
+            // Inverse body rotation keeps the supporting hooves on the ground.
+            const float groundX = (hip-7)*1.5f - shiftX;
+            const float plantedX = 7 + (groundX*c - bounce*s)/1.5f;
+            const float plantedY = 18 + (-groundX*s - bounce*c)/1.5f;
+            const float support = 1-run;
+            hoofX = hoofX*(1-support) + plantedX*support;
+            hoofY = hoofY*(1-support) + plantedY*support;
+            // Position the joint near the hip-to-hoof line, avoiding a deep squat.
+            kneeX = kneeX*(1-support) + ((hip+hoofX)*0.5f - 1.8f*crouch - 0.4f*rear)*support;
+            kneeY = kneeY*(1-support) + ((10+hoofY)*0.5f)*support;
         }
         limb(hip, 10, kneeX, kneeY);
         limb(kneeX, kneeY, hoofX, hoofY);
@@ -87,7 +105,7 @@ void drawHorse(float x, float rear, float phase, float run, float landing) {
         for (int col = 3; horse[y][col]; ++col)
             if (horse[y][col] == '#') pixel(col, y);
     // Tail flicks behind the body, with a delayed tip.
-    const float swish = sinf(phase-0.7f)*run + rear;
+    const float swish = sinf(phase-0.7f)*run + rear*(0.7f + 0.35f*sinf(phase));
     limb(4, 7, 1, 8 + swish);
     limb(1, 8 + swish, -2, 11 + 2*swish);
 }
@@ -97,13 +115,24 @@ void drawAnimation(uint32_t elapsed) {
     // 1.6 s for anticipation, rise, hold, landing; 1.6 s for the gallop.
     const float time = elapsed;
     const float rearTime = goodbye ? time : time - 1600;
-    float rear = 0, landing = 0;
+    float rear = 0, crouch = 0;
     if (rearTime >= 0 && rearTime < 1600) {
-        if (rearTime < 180) landing = 1.5f*sinf(rearTime/180*3.14159265f);
-        else if (rearTime < 700) rear = ease((rearTime-180)/520);
-        else if (rearTime < 950) rear = 1;
-        else if (rearTime < 1400) rear = 1-ease((rearTime-950)/450);
-        else landing = 1.8f*sinf((rearTime-1400)/200*3.14159265f);
+        // A natural rear is: load the hindquarters, push upward, balance, land.
+        if (rearTime < 320) {
+            crouch = 1.10f*ease(rearTime/320);
+        } else if (rearTime < 820) {
+            rear = ease((rearTime-320)/500);
+            crouch = 1.10f - 0.32f*rear;
+        } else if (rearTime < 1120) {
+            const float balance = (rearTime-820) / 300.0f * 6.2831853f;
+            rear = 0.94f + 0.045f*sinf(balance);
+            crouch = 0.78f + 0.07f*cosf(balance);
+        } else if (rearTime < 1450) {
+            rear = 0.94f*(1-ease((rearTime-1120)/330));
+            crouch = 0.78f*(1-ease((rearTime-1120)/330));
+        } else {
+            crouch = 0.25f*sinf((rearTime-1450)/150*3.14159265f);
+        }
     }
     float x = 53, run = 0, phase = 0;
     if (!goodbye && time < 1600) {
@@ -118,9 +147,13 @@ void drawAnimation(uint32_t elapsed) {
         run = ease(t/0.15f);
         phase = (time-1600)/440*6.2831853f;
     }
+    if (rearTime >= 0 && rearTime < 1600) {
+        // Keep legs, tail and balance alive during the rear too.
+        phase = rearTime / 260.0f * 6.2831853f;
+    }
     oled.clearBuffer();
     oled.drawStr(37, 10, "HinnikCam");
-    drawHorse(x, rear, phase, run, landing);
+    drawHorse(x, rear, phase, run, crouch);
     oled.drawHLine(0, 52, 128);
     const char* caption = goodbye ? "Tot de volgende rit!" : "Klaar voor de rit!";
     oled.drawStr((128 - oled.getStrWidth(caption)) / 2, 63, caption);
