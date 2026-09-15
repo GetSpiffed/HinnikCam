@@ -42,6 +42,14 @@ De pagina toont wifi-/camerastatus, IP-adres en het aantal wifi-clients. Status 
 
 Na verbreken ruimt de server de streamverbinding op en accepteert hij opnieuw een client. Verbind opnieuw met wifi en herlaad de pagina of druk **Stream opnieuw starten**. Automatisch herstellen van de browserstream is een vervolgstap.
 
+## Foto opslaan en webinterface
+
+De mobiele webpagina zet het camerabeeld centraal, met knoppen voor Foto opslaan en Opnieuw verbinden. Verbindings- en voedingsstatus staan in aparte blokken; technische gegevens zijn uitklapbaar en uitschakelen staat apart onderaan.
+
+Kies **Foto opslaan** om een JPEG op te halen en te downloaden als HinnikCam-[datum-tijd].jpg. Het is een cameraframe op de ingestelde resolutie (640x480), geen screenshot van de webpagina. Het frame kan iets verschillen van wat de vertraagde browserstream op dat moment toont. Als downloaden op je telefoon anders wordt afgehandeld, kies **Open foto** en gebruik de bewaar-/deelfunctie van je browser.
+
+Direct foto-endpoint: http://192.168.4.1/capture. De camera blijft streamen; een foto kan kort capaciteit delen met de stream. Foto's worden niet op het board bewaard. Er zijn geen externe scripts, lettertypen of diensten nodig.
+
 ## Aan/uit en energiebediening
 
 - **PWRKEY kort:** het OLED aanzetten, of de zichtbaarheid met 60 seconden verlengen.
