@@ -52,6 +52,7 @@ esp_err_t streamHandler(httpd_req_t *req) {
     httpd_resp_set_type(req, "multipart/x-mixed-replace;boundary=hinnikcamframe");
     httpd_resp_set_hdr(req, "Cache-Control", "no-store");
     Serial.println("[stream] Client connected");
+    lastFrameMs.store(millis() - 3000); // No fresh frame until the first successful send.
     streaming.store(true);
     esp_err_t result = ESP_OK;
     while (result == ESP_OK) {
@@ -117,4 +118,8 @@ bool startWebServer(bool ready) {
     if (!addHandler(streamServer, "/stream", streamHandler)) return false;
     Serial.printf("[web] UI port %u; MJPEG port %u\n", Config::WEB_PORT, Config::STREAM_PORT);
     return true;
+}
+
+bool streamHasRecentFrames() {
+    return streaming.load() && millis() - lastFrameMs.load() < 3000;
 }

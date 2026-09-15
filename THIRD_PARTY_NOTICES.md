@@ -51,3 +51,14 @@ Full text: `LICENSES/Apache-2.0.txt`.
 
 XPowersLib is installed by PlatformIO with its own MIT license. Arduino-ESP32
 and bundled ESP-IDF/camera components retain their upstream licenses.
+
+## OLED extension
+
+The SSD1306 constructor, rotation and shared I2C setup follow
+LilyGO's examples/MinimalScreenExample/MinimalScreenExample.ino at the same
+reference commit above (MIT, Copyright (c) 2022 Shenzhen Xin Yuan Electronic
+Technology Co., Ltd). The status layout is specific to HinnikCam.
+
+U8g2 tag 2.37.1 (library metadata reports 2.36.19) is pinned to commit bb6ebd14bdbe7a3b483cf0214ca6a38156870e37
+in https://github.com/olikraus/U8g2_Arduino and installed with its upstream
+BSD-2-Clause license.

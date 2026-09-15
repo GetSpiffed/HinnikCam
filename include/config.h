@@ -21,5 +21,10 @@ constexpr int CAM_D4 = 13, CAM_D5 = 11, CAM_D6 = 10, CAM_D7 = 9;
 constexpr int CAM_XCLK = 38, CAM_PCLK = 12, CAM_VSYNC = 8, CAM_HREF = 18;
 constexpr int CAM_SDA = 5, CAM_SCL = 4, CAM_RESET = 39, CAM_PWDN = -1;
 constexpr int PMU_SDA = 7, PMU_SCL = 6;
+constexpr bool OLED_ENABLED = true;
+constexpr uint8_t OLED_ADDRESS = 0x3C;
+constexpr bool OLED_ROTATE_180 = true; // U8G2_R2, matching LilyGO.
+constexpr uint8_t OLED_CONTRAST = 128;
+constexpr uint32_t OLED_REFRESH_MS = 1000;
 constexpr int PIR_INPUT = 17; // Reserved only: no polling or interrupts in v1.
 }

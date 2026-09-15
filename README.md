@@ -25,7 +25,7 @@ pio run -t upload --upload-port COM5
 pio device monitor --port COM5 --baud 115200
 ```
 
-Vervang `COM5` door de boardpoort (Linux bijvoorbeeld `/dev/ttyACM0`). Sluit de monitor vóór uploaden. Eerste build downloadt toolchain en libraries; alleen daarvoor is internet nodig. Camera- en HTTP-drivers komen uit het Arduino-framework; XPowersLib is de enige extra library, vastgezet op de officiële v0.3.3-commit. Installeer ook Git zodat PlatformIO deze library kan ophalen.
+Vervang `COM5` door de boardpoort (Linux bijvoorbeeld `/dev/ttyACM0`). Sluit de monitor vóór uploaden. Eerste build downloadt toolchain en libraries; alleen daarvoor is internet nodig. Camera- en HTTP-drivers komen uit het Arduino-framework; XPowersLib (v0.3.3) en U8g2 (tag 2.37.1, librarymetadata 2.36.19) zijn vastgezet op officiële releasecommits. Installeer ook Git zodat PlatformIO deze libraries kan ophalen.
 
 Wordt het board niet gevonden, houd **BOOT** ingedrukt, druk kort **RESET**, laat BOOT los en upload opnieuw. Druk zo nodig na uploaden op RESET en selecteer de nieuwe USB-poort. De firmware wacht nooit op een Serial-monitor en start ook zelfstandig zonder computer.
 
@@ -42,11 +42,31 @@ De pagina toont wifi-/camerastatus, IP-adres en het aantal wifi-clients. Status 
 
 Na verbreken ruimt de server de streamverbinding op en accepteert hij opnieuw een client. Verbind opnieuw met wifi en herlaad de pagina of druk **Stream opnieuw starten**. Automatisch herstellen van de browserstream is een vervolgstap.
 
+## OLED-status
+
+Het ingebouwde SSD1306-scherm (128x64, I2C-adres 0x3C) toont:
+
+- HinnikCam
+- Wifi: AP actief of FOUT
+- IP-adres van het access point
+- Aantal verbonden wifi-clients
+- Camera: VGA JPEG OK of FOUT (initialisatiestatus)
+- Stream: LIVE bij recent verzonden frames; anders geen beeld/niet gereed
+
+De status ververst elke seconde. LIVE betekent dat de server binnen de laatste drie seconden een frame heeft verzonden; het bevestigt niet dat de telefoon dat frame heeft weergegeven. Een wifi-client hoeft geen stream te bekijken.
+
+Het display gebruikt U8g2 met dezelfde SSD1306-configuratie en 180 graden rotatie als LilyGO's MinimalScreenExample. SDA 7 en SCL 6 worden gedeeld met de PMU; de camerabus blijft apart. Een ontbrekend OLED blokkeert de camera niet. Bij een latere I2C-fout stoppen OLED-updates tot een herstart.
+
+In include/config.h staan OLED_ENABLED, OLED_ADDRESS, OLED_ROTATE_180, OLED_CONTRAST en OLED_REFRESH_MS. Zet OLED_ROTATE_180 op false als de tekst ondersteboven staat.
+
+Controleer op hardware dat het aantal clients verandert bij verbinden/verbreken en dat Stream omschakelt tussen LIVE en geen beeld bij starten/stoppen van de browserstream. Controleer tegelijk dat het camerabeeld goed blijft doorlopen.
+
 ## Bestanden en configuratie
 
 - `platformio.ini`: vastgezette buildomgeving, flash en PSRAM.
 - `include/config.h`: wifi, camerabedrading, beeldoriëntatie, JPEG-kwaliteit en verzendlimiet.
-- `src/main.cpp`: opstartvolgorde en clientlogging.
+- `src/main.cpp`: opstartvolgorde, clientlogging en OLED-updates.
+- `src/display.cpp`, `include/display.h`: compact OLED-statusscherm.
 - `src/camera.cpp`: AXP2101 en OV2640.
 - `src/network.cpp`: zelfstandig access point, DHCP en vast IP.
 - `src/webserver.cpp`, `include/web_page.h`: HTTP, status en MJPEG.
@@ -70,14 +90,14 @@ De lokale build controleert compilatie; live beeld, voeding, PSRAM en bereik moe
 - Geen gegarandeerde 10–15 fps of radiobereik; metaal in auto/trailer, afstand en weinig licht beïnvloeden het beeld. Geen nachtverlichting of audio.
 - Bij netwerkverlies kan opruimen enkele seconden duren (HTTP-sendtimeout 3 seconden). Browserstream kan handmatig herstart nodig hebben; een browser kan het laatste beeld vasthouden.
 - Bij camera-initfouten blijft de webpagina bereikbaar; controleer Serial, voeding en aansluiting en herstart daarna het board.
-- Geen opname, OLED, PIR-verwerking, accubewaking of laadconfiguratie. Begin de hardwaretest via USB.
+- Geen opname, PIR-verwerking, accubewaking of laadconfiguratie. Begin de hardwaretest via USB.
 - Open AP: iedereen binnen bereik kan verbinden en kijken. Een configureerbaar WPA2-wachtwoord is beschikbaar.
 
 ## Mogelijke vervolgstappen
 
 - PIR-trigger
 - Battery voltage monitoring
-- Displaystatus
+- Uitgebreidere displaystatus (bijvoorbeeld batterijspanning)
 - Fullscreen mobiele interface
 - Automatisch reconnecten van browserstream
 - Instelbare resolutie/framerate
