@@ -12,7 +12,7 @@ Een minimale, zelfstandige paardentrailercamera: **telefoon → HinnikCam-wifi �
 
 Eerst is de lege repository gecontroleerd, daarna LilyGO's specifieke [LilyGo-Cam-ESP32S3](https://github.com/Xinyuan-LilyGO/LilyGo-Cam-ESP32S3/tree/af0b94d6e79280bb6e8938ce3383ac19687957ca), met name `MinimalCameraExample.ino`, `utilities.h`, `app_httpd.cpp` en de README. De algemene Camera-Series-repository bevatte deze variant niet. Het project gebruikt de LilyGO-voedingsinitialisatie en het Espressif CameraWebServer-patroon voor MJPEG; gezichtsherkenning en uitgebreide camera-controls zijn weggelaten. Zie [bronvermelding](THIRD_PARTY_NOTICES.md).
 
-De AXP2101 schakelt vóór camera-init ALDO1 naar 1,8 V, ALDO2 naar 2,8 V en ALDO4 naar 3,0 V. Zonder deze stap werkt alleen de pinmapping niet. Laadinstellingen blijven ongemoeid; acculaden en batterijbeheer vallen buiten deze versie.
+De voedingsmodule schakelt via de AXP2101 vóór camera-init ALDO1 naar 1,8 V, ALDO2 naar 2,8 V en ALDO4 naar 3,0 V. Zonder deze stap werkt alleen de pinmapping niet. Laadinstellingen blijven ongemoeid; acculaden en batterijbeheer vallen buiten deze versie.
 
 ## Bouwen en uploaden
 
@@ -42,6 +42,21 @@ De pagina toont wifi-/camerastatus, IP-adres en het aantal wifi-clients. Status 
 
 Na verbreken ruimt de server de streamverbinding op en accepteert hij opnieuw een client. Verbind opnieuw met wifi en herlaad de pagina of druk **Stream opnieuw starten**. Automatisch herstellen van de browserstream is een vervolgstap.
 
+## Aan/uit en energiebediening
+
+- **PWRKEY kort:** het OLED aanzetten, of de zichtbaarheid met 60 seconden verlengen.
+- **PWRKEY 6 seconden vasthouden:** uitschakelen via de voedingschip.
+- **PWRKEY kort wanneer uit:** het board aanzetten (ingestelde drempel 128 ms).
+- **Browserknop HinnikCam uitschakelen:** bevestig de melding. Stream en webserver stoppen, de camera wordt vrijgegeven en daarna schakelt de AXP2101 uit. Weer aanzetten gebeurt bij het board, niet via wifi.
+- **OLED:** slaapt na 60 seconden zonder knop- of PIR-activiteit. Camera en wifi blijven werken. Beweging voor de PIR maakt alleen het OLED wakker; zolang het PIR-signaal actief blijft, blijft het scherm aan. De PIR kan na inschakelen enige tijd actief/onrustig zijn.
+- Het OLED en de webpagina tonen USB-/accuvoeding, accuspanning en de door de PMU gemelde laadstatus. Geen percentage: spanning is geen betrouwbare directe procentindicatie.
+- Geen automatische uitschakeling bij verlies van wifi. Lage-accuwaarschuwing en een uitschakelgrens zijn nog vervolgstappen.
+- De bestaande laadinstellingen blijven ongemoeid. Een aangesloten accu wordt hiermee niet automatisch correct geladen; zie de hardwaredocumentatie voordat laadbeheer wordt toegevoegd.
+
+OLED_IDLE_MS in include/config.h bepaalt de slaapvertraging. De ESP32 zelf gaat niet in deep sleep: voor langer niet-gebruik blijft uitschakelen nodig. Test het uitschakelen ook op uitsluitend accuvoeding; aangesloten USB kan het voedings-/herstartgedrag beïnvloeden.
+
+De webactie gebruikt POST /shutdown met X-HinnikCam-Confirm: yes; een gewone GET schakelt niets uit. Iedere verbonden client kan deze actie aanvragen. HTTP-taken lezen alleen een threadveilige voedingssnapshot; PMU en OLED gebruiken de I2C-bus uitsluitend vanuit de hoofdtaak.
+
 ## OLED-status
 
 Het ingebouwde SSD1306-scherm (128x64, I2C-adres 0x3C) toont:
@@ -50,16 +65,16 @@ Het ingebouwde SSD1306-scherm (128x64, I2C-adres 0x3C) toont:
 - Wifi: AP actief of FOUT
 - IP-adres van het access point
 - Aantal verbonden wifi-clients
-- Camera: VGA JPEG OK of FOUT (initialisatiestatus)
-- Stream: LIVE bij recent verzonden frames; anders geen beeld/niet gereed
+- Camera: LIVE, gereed of FOUT
+- USB-/accuvoeding, accuspanning en eventuele laadstatus
 
-De status ververst elke seconde. LIVE betekent dat de server binnen de laatste drie seconden een frame heeft verzonden; het bevestigt niet dat de telefoon dat frame heeft weergegeven. Een wifi-client hoeft geen stream te bekijken.
+Zolang het scherm wakker is, ververst de status elke seconde. LIVE betekent dat de server binnen de laatste drie seconden een frame heeft verzonden; het bevestigt niet dat de telefoon dat frame heeft weergegeven. Een wifi-client hoeft geen stream te bekijken.
 
 Het display gebruikt U8g2 met dezelfde SSD1306-configuratie en 180 graden rotatie als LilyGO's MinimalScreenExample. SDA 7 en SCL 6 worden gedeeld met de PMU; de camerabus blijft apart. Een ontbrekend OLED blokkeert de camera niet. Bij een latere I2C-fout stoppen OLED-updates tot een herstart.
 
 In include/config.h staan OLED_ENABLED, OLED_ADDRESS, OLED_ROTATE_180, OLED_CONTRAST en OLED_REFRESH_MS. Zet OLED_ROTATE_180 op false als de tekst ondersteboven staat.
 
-Controleer op hardware dat het aantal clients verandert bij verbinden/verbreken en dat Stream omschakelt tussen LIVE en geen beeld bij starten/stoppen van de browserstream. Controleer tegelijk dat het camerabeeld goed blijft doorlopen.
+Controleer op hardware dat het aantal clients verandert bij verbinden/verbreken en dat Camera omschakelt tussen LIVE en gereed bij starten/stoppen van de browserstream. Controleer tegelijk dat het camerabeeld goed blijft doorlopen.
 
 ## Bestanden en configuratie
 
@@ -67,12 +82,13 @@ Controleer op hardware dat het aantal clients verandert bij verbinden/verbreken 
 - `include/config.h`: wifi, camerabedrading, beeldoriëntatie, JPEG-kwaliteit en verzendlimiet.
 - `src/main.cpp`: opstartvolgorde, clientlogging en OLED-updates.
 - `src/display.cpp`, `include/display.h`: compact OLED-statusscherm.
-- `src/camera.cpp`: AXP2101 en OV2640.
+- `src/camera.cpp`: OV2640.
+- `src/power.cpp`, `include/power.h`: AXP2101, PWRKEY, PIR, voedingsmetingen en uitschakelen.
 - `src/network.cpp`: zelfstandig access point, DHCP en vast IP.
 - `src/webserver.cpp`, `include/web_page.h`: HTTP, status en MJPEG.
 - `include/camera.h`, `include/network.h`, `include/webserver.h`: kleine module-interfaces.
 
-Gecontroleerde camerapinnen: D0–D7 = **14, 47, 48, 21, 13, 11, 10, 9**; XCLK = **38**, PCLK = **12**, VSYNC = **8**, HREF = **18**, SCCB SDA/SCL = **5/4**, RESET = **39**, PWDN = **-1**. PMU SDA/SCL = **7/6**. PIR GPIO **17** is alleen gereserveerd. Verticaal spiegelen en horizontaal spiegelen volgen LilyGO's voorbeeld; pas `VFLIP`/`HMIRROR` aan bij afwijkende montage.
+Gecontroleerde camerapinnen: D0–D7 = **14, 47, 48, 21, 13, 11, 10, 9**; XCLK = **38**, PCLK = **12**, VSYNC = **8**, HREF = **18**, SCCB SDA/SCL = **5/4**, RESET = **39**, PWDN = **-1**. PMU SDA/SCL = **7/6**. PIR GPIO **17** wekt alleen het OLED; de PIR krijgt 3,3 V via ALDO3. Verticaal spiegelen en horizontaal spiegelen volgen LilyGO's voorbeeld; pas `VFLIP`/`HMIRROR` aan bij afwijkende montage.
 
 ## Controle op echte hardware
 
@@ -90,15 +106,28 @@ De lokale build controleert compilatie; live beeld, voeding, PSRAM en bereik moe
 - Geen gegarandeerde 10–15 fps of radiobereik; metaal in auto/trailer, afstand en weinig licht beïnvloeden het beeld. Geen nachtverlichting of audio.
 - Bij netwerkverlies kan opruimen enkele seconden duren (HTTP-sendtimeout 3 seconden). Browserstream kan handmatig herstart nodig hebben; een browser kan het laatste beeld vasthouden.
 - Bij camera-initfouten blijft de webpagina bereikbaar; controleer Serial, voeding en aansluiting en herstart daarna het board.
-- Geen opname, PIR-verwerking, accubewaking of laadconfiguratie. Begin de hardwaretest via USB.
+- Geen opname, automatisch uitschakelen bij lage accu of laadconfiguratie. Begin de hardwaretest via USB.
 - Open AP: iedereen binnen bereik kan verbinden en kijken. Een configureerbaar WPA2-wachtwoord is beschikbaar.
 
 ## Mogelijke vervolgstappen
 
-- PIR-trigger
-- Battery voltage monitoring
+- PIR-trigger voor andere toepassingen (OLED-wakeup is aanwezig)
+- Lage-accuwaarschuwing en gecontroleerde uitschakelgrens
 - Uitgebreidere displaystatus (bijvoorbeeld batterijspanning)
 - Fullscreen mobiele interface
 - Automatisch reconnecten van browserstream
 - Instelbare resolutie/framerate
 - Low-battery waarschuwing
+
+## Testen energiebediening
+
+De browserlogica kan zonder board worden gecontroleerd met Node.js:
+node tests/web-ui.cjs (annuleren, bevestigen, HTTP-fout en spanningsweergave).
+
+Controleer daarna op hardware:
+1. Laat de PIR tot rust komen en wacht 60 seconden zonder beweging: OLED uit, browserstream blijft werken.
+2. Beweeg voor de PIR: OLED aan; na de laatste activiteit opnieuw 60 seconden zichtbaar.
+3. Wacht tot het OLED slaapt en druk kort PWRKEY: OLED aan, camera blijft werken.
+4. Annuleer de browserbevestiging: niets schakelt uit.
+5. Bevestig uitschakelen: wifi en OLED verdwijnen; zet weer aan met PWRKEY.
+6. Controleer lang indrukken (6 s) en opnieuw aanzetten, ook op uitsluitend accuvoeding.

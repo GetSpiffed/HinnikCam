@@ -26,5 +26,7 @@ constexpr uint8_t OLED_ADDRESS = 0x3C;
 constexpr bool OLED_ROTATE_180 = true; // U8G2_R2, matching LilyGO.
 constexpr uint8_t OLED_CONTRAST = 128;
 constexpr uint32_t OLED_REFRESH_MS = 1000;
-constexpr int PIR_INPUT = 17; // Reserved only: no polling or interrupts in v1.
+constexpr uint32_t OLED_IDLE_MS = 60000;
+constexpr int PMU_IRQ = 2;
+constexpr int PIR_INPUT = 17; // Only wakes OLED, never switches camera power.
 }

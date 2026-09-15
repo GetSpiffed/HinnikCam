@@ -62,3 +62,7 @@ Technology Co., Ltd). The status layout is specific to HinnikCam.
 U8g2 tag 2.37.1 (library metadata reports 2.36.19) is pinned to commit bb6ebd14bdbe7a3b483cf0214ca6a38156870e37
 in https://github.com/olikraus/U8g2_Arduino and installed with its upstream
 BSD-2-Clause license.
+Power key timing, battery measurement and PIR ALDO3 setup follow
+examples/MinimalPowersExample/MinimalPowersExample.ino at the LilyGO commit
+listed above (MIT). HinnikCam leaves charger configuration unchanged and
+uses PIR only to wake the OLED, not to control camera availability.

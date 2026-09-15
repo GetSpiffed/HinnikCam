@@ -1,9 +1,11 @@
 #include <Arduino.h>
 #include <WiFi.h>
+#include <esp_camera.h>
 #include "camera.h"
 #include "network.h"
 #include "webserver.h"
 #include "display.h"
+#include "power.h"
 
 namespace {
 bool cameraReady = false;
@@ -13,12 +15,12 @@ bool webReady = false;
 
 void setup() {
     Serial.begin(115200);
-    // Never wait for USB Serial: startup must also work on standalone power.
+    // Standalone startup must never wait for USB Serial.
     delay(300);
     Serial.println("\nHinnikCam starting");
-    cameraReady = startCamera();
-    startDisplay(); // Optional: failure must not prevent camera/network startup.
-    // Keep diagnostics accessible even when camera initialization fails.
+    const bool cameraPowered = startPower();
+    cameraReady = cameraPowered && startCamera();
+    startDisplay();
     apReady = startAccessPoint();
     webReady = apReady && startWebServer(cameraReady);
     updateDisplay(cameraReady, apReady, webReady);
@@ -30,6 +32,7 @@ void setup() {
 }
 
 void loop() {
+    updatePower(); // All runtime PMU and OLED I2C calls stay on this task.
     static int lastClients = -1;
     const int clients = WiFi.softAPgetStationNum();
     if (clients != lastClients) {
@@ -38,6 +41,12 @@ void loop() {
     }
     const wifi_mode_t mode = WiFi.getMode();
     updateDisplay(cameraReady, mode == WIFI_AP || mode == WIFI_AP_STA, webReady);
-    // Future PIR/battery work can be added here without owning the stream.
-    delay(500);
+    if (powerOffDue()) {
+        stopWebServer(); // Join stream task before releasing camera buffers.
+        if (cameraReady) esp_camera_deinit();
+        WiFi.mode(WIFI_OFF);
+        sleepDisplay();
+        powerOff();
+    }
+    delay(50);
 }

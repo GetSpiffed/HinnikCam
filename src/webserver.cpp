@@ -5,6 +5,7 @@
 #include "webserver.h"
 #include "config.h"
 #include "web_page.h"
+#include "power.h"
 #include <WiFi.h>
 #include <atomic>
 #include <esp_camera.h>
@@ -24,15 +25,35 @@ esp_err_t indexHandler(httpd_req_t *req) {
 }
 
 esp_err_t statusHandler(httpd_req_t *req) {
-    char json[256];
+    char json[400];
+    const PowerStatus power = getPowerStatus();
     snprintf(json, sizeof(json),
-        "{\"camera_ready\":%s,\"streaming\":%s,\"frame_age_ms\":%lu,\"clients\":%u,\"ip\":\"%s\"}",
+        R"JSON({"camera_ready":%s,"streaming":%s,"frame_age_ms":%lu,"clients":%u,"ip":"%s","power_ready":%s,"usb":%s,"battery":%s,"charging":%s,"battery_mv":%u,"shutting_down":%s})JSON",
         cameraReady ? "true" : "false", streaming.load() ? "true" : "false",
         static_cast<unsigned long>(millis() - lastFrameMs.load()),
-        WiFi.softAPgetStationNum(), WiFi.softAPIP().toString().c_str());
+        WiFi.softAPgetStationNum(), WiFi.softAPIP().toString().c_str(),
+        power.ready ? "true" : "false", power.usb ? "true" : "false",
+        power.battery ? "true" : "false", power.charging ? "true" : "false",
+        power.batteryMv, powerOffPending() ? "true" : "false");
     httpd_resp_set_type(req, "application/json");
     httpd_resp_set_hdr(req, "Cache-Control", "no-store");
     return httpd_resp_send(req, json, HTTPD_RESP_USE_STRLEN);
+}
+
+esp_err_t shutdownHandler(httpd_req_t *req) {
+    // Custom header prevents accidental GETs and simple cross-origin form POSTs.
+    char confirm[8] = {};
+    if (httpd_req_get_hdr_value_str(req, "X-HinnikCam-Confirm", confirm, sizeof(confirm)) != ESP_OK ||
+        strcmp(confirm, "yes") != 0) {
+        return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Confirmation required");
+    }
+    if (!requestPowerOff()) {
+        httpd_resp_set_status(req, "503 Service Unavailable");
+        return httpd_resp_send(req, "Power controller unavailable", HTTPD_RESP_USE_STRLEN);
+    }
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_set_hdr(req, "Cache-Control", "no-store");
+    return httpd_resp_send(req, "{\"shutting_down\":true}", HTTPD_RESP_USE_STRLEN);
 }
 
 esp_err_t redirectHandler(httpd_req_t *req) {
@@ -55,7 +76,7 @@ esp_err_t streamHandler(httpd_req_t *req) {
     lastFrameMs.store(millis() - 3000); // No fresh frame until the first successful send.
     streaming.store(true);
     esp_err_t result = ESP_OK;
-    while (result == ESP_OK) {
+    while (result == ESP_OK && !powerOffPending()) {
         const uint32_t started = millis();
         camera_fb_t *fb = esp_camera_fb_get();
         if (!fb) {
@@ -81,12 +102,12 @@ esp_err_t streamHandler(httpd_req_t *req) {
     streaming.store(false);
     Serial.printf("[stream] Connection ended (%s); ready for reconnect\n", esp_err_to_name(result));
     // An error return closes the dead socket; the server continues accepting clients.
-    return result;
+    return result == ESP_OK ? ESP_FAIL : result; // Close the multipart socket on shutdown too.
 }
 
-bool addHandler(httpd_handle_t server, const char *uri, esp_err_t (*handler)(httpd_req_t *)) {
+bool addHandler(httpd_handle_t server, const char *uri, esp_err_t (*handler)(httpd_req_t *), httpd_method_t method = HTTP_GET) {
     httpd_uri_t route = {};
-    route.uri = uri; route.method = HTTP_GET; route.handler = handler;
+    route.uri = uri; route.method = method; route.handler = handler;
     const esp_err_t err = httpd_register_uri_handler(server, &route);
     if (err != ESP_OK) Serial.printf("[web] ERROR route %s: %s\n", uri, esp_err_to_name(err));
     return err == ESP_OK;
@@ -106,7 +127,8 @@ bool startWebServer(bool ready) {
         return false;
     }
     if (!addHandler(webServer, "/", indexHandler) || !addHandler(webServer, "/status", statusHandler) ||
-        !addHandler(webServer, "/stream", redirectHandler)) return false;
+        !addHandler(webServer, "/stream", redirectHandler) ||
+        !addHandler(webServer, "/shutdown", shutdownHandler, HTTP_POST)) return false;
     // A synchronous MJPEG handler occupies its HTTP task. Keep UI/status separate.
     config.server_port = Config::STREAM_PORT;
     config.ctrl_port += 1;
@@ -122,4 +144,9 @@ bool startWebServer(bool ready) {
 
 bool streamHasRecentFrames() {
     return streaming.load() && millis() - lastFrameMs.load() < 3000;
+}
+void stopWebServer() {
+    // powerOffPending() tells the synchronous stream handler to finish.
+    if (streamServer) { httpd_stop(streamServer); streamServer = nullptr; }
+    if (webServer) { httpd_stop(webServer); webServer = nullptr; }
 }

@@ -2,12 +2,7 @@
 // Copyright (c) 2022 Shenzhen Xin Yuan Electronic Technology Co., Ltd (MIT).
 #include "camera.h"
 #include "config.h"
-#include <Wire.h>
-#define XPOWERS_CHIP_AXP2101
-#include <XPowersLib.h>
 #include <esp_camera.h>
-
-namespace { XPowersPMU pmu; }
 
 bool startCamera() {
     if (!psramFound()) {
@@ -15,18 +10,6 @@ bool startCamera() {
         return false;
     }
     Serial.printf("[camera] PSRAM: %u bytes\n", ESP.getPsramSize());
-    if (!pmu.begin(Wire, AXP2101_SLAVE_ADDRESS, Config::PMU_SDA, Config::PMU_SCL)) {
-        Serial.println("[camera] ERROR: AXP2101 not found");
-        return false;
-    }
-    // Required camera rails, exactly as specified by LilyGO.
-    if (!pmu.setALDO1Voltage(1800) || !pmu.enableALDO1() ||
-        !pmu.setALDO2Voltage(2800) || !pmu.enableALDO2() ||
-        !pmu.setALDO4Voltage(3000) || !pmu.enableALDO4()) {
-        Serial.println("[camera] ERROR: camera power rails failed");
-        return false;
-    }
-    delay(100);
     camera_config_t c = {};
     c.ledc_channel = LEDC_CHANNEL_0;
     c.ledc_timer = LEDC_TIMER_0;
