@@ -85,7 +85,7 @@ Het ingebouwde SSD1306-scherm (128x64, I2C-adres 0x3C) toont:
 
 - HinnikCam
 - Wifi: AP actief of FOUT
-- IP-adres van het access point
+- Webadres http://hinnikcam.nl
 - Aantal verbonden wifi-clients
 - Camera: LIVE, gereed of FOUT
 - USB-/accuvoeding, accuspanning en eventuele laadstatus

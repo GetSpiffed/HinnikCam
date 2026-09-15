@@ -67,8 +67,7 @@ void updateDisplay(bool cameraReady, bool apReady, bool webReady) {
     oled.drawStr(0, 10, powerOffPending() ? "Uitschakelen..." : "HinnikCam");
     oled.drawHLine(0, 13, 128);
     oled.drawStr(0, 23, apReady ? "Wifi: AP actief" : "Wifi: FOUT");
-    const String ip = apReady ? WiFi.softAPIP().toString() : String("-");
-    snprintf(line, sizeof(line), "IP: %s", ip.c_str());
+    snprintf(line, sizeof(line), "http://%s", Config::LOCAL_HOSTNAME);
     oled.drawStr(0, 33, line);
     snprintf(line, sizeof(line), "Wifi-clients: %u", WiFi.softAPgetStationNum());
     oled.drawStr(0, 43, line);
