@@ -32,6 +32,7 @@ void setup() {
 }
 
 void loop() {
+    processLocalDns();
     updatePower(); // All runtime PMU and OLED I2C calls stay on this task.
     static int lastClients = -1;
     const int clients = WiFi.softAPgetStationNum();
@@ -44,6 +45,7 @@ void loop() {
     if (powerOffDue()) {
         stopWebServer(); // Join stream task before releasing camera buffers.
         if (cameraReady) esp_camera_deinit();
+        stopLocalDns();
         WiFi.mode(WIFI_OFF);
         sleepDisplay();
         powerOff();

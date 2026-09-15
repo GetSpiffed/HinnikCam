@@ -144,7 +144,7 @@ async function poll(){
       s.battery && s.battery_mv>0?'Accu '+(s.battery_mv/1000).toFixed(2)+' V'+(s.charging?' · Laden':''):'Geen accumeting';
     el('connection').textContent='HinnikCam';
     el('clients').textContent=s.clients+' '+(s.clients===1?'apparaat verbonden':'apparaten verbonden');
-    el('info').textContent='IP-adres: '+s.ip+' · VGA 640 × 480 · JPEG';
+    el('info').textContent='Adres: http://'+(s.hostname || s.ip)+' · IP: '+s.ip+' · VGA 640 × 480 · JPEG';
     if(!s.camera_ready){badge('Camerafout','offline');status.textContent='Camera niet beschikbaar. Controleer het board en herstart.';}
     else if(s.streaming && s.frame_age_ms<3000){badge('Live','live');status.textContent='Verbonden · De camera verstuurt beelden.';}
     else{badge('Wachten op beeld','waiting');status.textContent='Verbonden · Nog geen recente beelden. Verbind zo nodig opnieuw.';}

@@ -3,6 +3,8 @@
 
 namespace Config {
 constexpr char AP_SSID[] = "HinnikCam";
+constexpr char LOCAL_HOSTNAME[] = "hinnikcam.nl";
+constexpr uint32_t DNS_TTL_SECONDS = 10;
 constexpr char AP_PASSWORD[] = ""; // Open AP; set >= 8 characters for WPA2.
 constexpr uint8_t AP_IP[] = {192, 168, 4, 1};
 constexpr uint8_t AP_CHANNEL = 6;

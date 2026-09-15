@@ -34,13 +34,27 @@ Wordt het board niet gevonden, houd **BOOT** ingedrukt, druk kort **RESET**, laa
 1. Zet het board aan en verbind de telefoon met wifi **HinnikCam**.
 2. Standaard is dit een **open netwerk zonder wachtwoord**. Stel desgewenst `AP_PASSWORD` in `include/config.h` in op minimaal 8 tekens en flash opnieuw.
 3. Kies op de telefoon **verbonden blijven zonder internet**. Schakel automatisch overschakelen naar mobiele data uit als de telefoon de lokale verbinding verlaat.
-4. Open expliciet [http://192.168.4.1/](http://192.168.4.1/).
+4. Open expliciet [http://hinnikcam.nl/](http://hinnikcam.nl/). [http://192.168.4.1/](http://192.168.4.1/) blijft werken als terugval.
 
 Directe MJPEG-stream: [http://192.168.4.1:81/stream](http://192.168.4.1:81/stream). Het korte adres [http://192.168.4.1/stream](http://192.168.4.1/stream) verwijst daarnaar door. Geen captive portal of HTTPS.
 
 De pagina toont wifi-/camerastatus, IP-adres en het aantal wifi-clients. Status wordt apart op poort 80 opgehaald terwijl poort 81 streamt. 'Camera verstuurt beelden' betekent dat de server recent een frame heeft verzonden, niet dat de browser dat frame aantoonbaar heeft weergegeven.
 
 Na verbreken ruimt de server de streamverbinding op en accepteert hij opnieuw een client. Verbind opnieuw met wifi en herlaad de pagina of druk **Stream opnieuw starten**. Automatisch herstellen van de browserstream is een vervolgstap.
+
+## Lokale hostnaam
+
+De ESP32 draait een lokale DNS-server op UDP-poort 53. Het accesspoint geeft via DHCP 192.168.4.1 als DNS-server aan verbonden telefoons door. hinnikcam.nl (ook www.hinnikcam.nl) verwijst daar naar het board, met een DNS-cachetijd van 10 seconden. Alleen deze naam wordt opgelost; er is geen wildcard-DNS of captive portal toegevoegd.
+
+Verbind na deze firmware-update opnieuw met HinnikCam-wifi zodat de telefoon de DHCP-instellingen vernieuwt. Gebruik expliciet http://hinnikcam.nl: HTTPS wordt niet ondersteund. VPN, privé-DNS of beveiligde DNS kan de lokale DNS-server omzeilen; gebruik dan het vaste IP-adres.
+
+Er is geen domeinregistratie of publieke DNS-aanpassing gedaan. Op een ander netwerk gelden de DNS-instellingen van dat netwerk. Een client kan kort een eerder DNS-antwoord bewaren; de TTL is een aanwijzing voor de client, geen gegarandeerde bovengrens.
+
+LOCAL_HOSTNAME en DNS_TTL_SECONDS staan in include/config.h. De DNS-server stopt tijdens gecontroleerd uitschakelen.
+
+Controle op een computer die met HinnikCam-wifi verbonden is:
+nslookup hinnikcam.nl 192.168.4.1
+Dit moet 192.168.4.1 opleveren. Controleer daarna ook nslookup hinnikcam.nl zonder expliciete server om de via DHCP verstrekte DNS te testen.
 
 ## Foto opslaan en webinterface
 
@@ -92,7 +106,7 @@ Controleer op hardware dat het aantal clients verandert bij verbinden/verbreken 
 - `src/display.cpp`, `include/display.h`: compact OLED-statusscherm.
 - `src/camera.cpp`: OV2640.
 - `src/power.cpp`, `include/power.h`: AXP2101, PWRKEY, PIR, voedingsmetingen en uitschakelen.
-- `src/network.cpp`: zelfstandig access point, DHCP en vast IP.
+- `src/network.cpp`: accesspoint, DHCP, vast IP en lokale DNS.
 - `src/webserver.cpp`, `include/web_page.h`: HTTP, status en MJPEG.
 - `include/camera.h`, `include/network.h`, `include/webserver.h`: kleine module-interfaces.
 

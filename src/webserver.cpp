@@ -28,10 +28,10 @@ esp_err_t statusHandler(httpd_req_t *req) {
     char json[400];
     const PowerStatus power = getPowerStatus();
     snprintf(json, sizeof(json),
-        R"JSON({"camera_ready":%s,"streaming":%s,"frame_age_ms":%lu,"clients":%u,"ip":"%s","power_ready":%s,"usb":%s,"battery":%s,"charging":%s,"battery_mv":%u,"shutting_down":%s})JSON",
+        R"JSON({"camera_ready":%s,"streaming":%s,"frame_age_ms":%lu,"clients":%u,"ip":"%s","hostname":"%s","power_ready":%s,"usb":%s,"battery":%s,"charging":%s,"battery_mv":%u,"shutting_down":%s})JSON",
         cameraReady ? "true" : "false", streaming.load() ? "true" : "false",
         static_cast<unsigned long>(millis() - lastFrameMs.load()),
-        WiFi.softAPgetStationNum(), WiFi.softAPIP().toString().c_str(),
+        WiFi.softAPgetStationNum(), WiFi.softAPIP().toString().c_str(), Config::LOCAL_HOSTNAME,
         power.ready ? "true" : "false", power.usb ? "true" : "false",
         power.battery ? "true" : "false", power.charging ? "true" : "false",
         power.batteryMv, powerOffPending() ? "true" : "false");
