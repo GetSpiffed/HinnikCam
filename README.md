@@ -67,6 +67,7 @@ Direct foto-endpoint: http://192.168.4.1/capture. De camera blijft streamen; een
 ## Aan/uit en energiebediening
 
 - **PWRKEY kort:** het OLED aanzetten, of de zichtbaarheid met 60 seconden verlengen.
+- **PWRKEY dubbel kort drukken (binnen 600 ms):** dezelfde afsluitroutine als de webknop, inclusief paardenanimatie. De eerste druk maakt het OLED direct wakker.
 - **PWRKEY 6 seconden vasthouden:** uitschakelen via de voedingschip.
 - **PWRKEY kort wanneer uit:** het board aanzetten (ingestelde drempel 128 ms).
 - **Browserknop HinnikCam uitschakelen:** bevestig de melding. Stream en webserver stoppen, de camera wordt vrijgegeven en daarna schakelt de AXP2101 uit. Weer aanzetten gebeurt bij het board, niet via wifi.
@@ -153,3 +154,6 @@ Controleer daarna op hardware:
 4. Annuleer de browserbevestiging: niets schakelt uit.
 5. Bevestig uitschakelen: wifi en OLED verdwijnen; zet weer aan met PWRKEY.
 6. Controleer lang indrukken (6 s) en opnieuw aanzetten, ook op uitsluitend accuvoeding.
+Bij opstarten galoppeert een pixelpaardje het OLED binnen en steigert het. Bij uitschakelen via de webknop of dubbel drukken op PWRKEY steigert het eerst en galoppeert het weg, met 'Tot de volgende rit!'. Het paard heeft afzonderlijk bewegende benen, galopsprongen en een meebewegende staart. Steigeren heeft een aanloop, korte pauze en verende landing. De animatie duurt 3,2 seconden en blokkeert de hoofdloop niet. Lang indrukken van PWRKEY schakelt via de voedingschip uit, zonder gegarandeerde animatie.
+
+7. Druk PWRKEY twee keer kort binnen 600 ms: de afsluitanimatie start en het board schakelt uit. Twee losse drukken met meer dan 600 ms ertussen mogen alleen het OLED wekken. Test ook met slapend OLED en op uitsluitend accuvoeding.

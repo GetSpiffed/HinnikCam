@@ -16,6 +16,9 @@ bool lastPir = false;
 uint32_t lastSample = 0;
 uint32_t requestedAt = 0;
 bool countdown = false;
+// PMU supplies debounced short-press events; pair them without delaying OLED wake.
+bool waitingForSecondPress = false;
+uint32_t firstPressAt = 0;
 std::atomic<bool> pending{false};
 // Single atomic snapshot; HTTP tasks never touch the shared PMU/OLED I2C bus.
 std::atomic<uint32_t> telemetry{0};
@@ -56,7 +59,7 @@ bool startPower() {
     // Charging configuration is intentionally left unchanged.
     delay(100);
     samplePower();
-    Serial.println("[power] Ready: PWRKEY short = OLED, hold 6 s = off");
+    Serial.println("[power] Ready: PWRKEY short = OLED, double = shutdown, hold 6 s = off");
     return cameraPower;
 }
 
@@ -73,9 +76,19 @@ void updatePower() {
         pmu.getIrqStatus();
         const bool pressed = pmu.isPekeyShortPressIrq();
         pmu.clearIrqStatus();
-        if (pressed) {
-            Serial.println("[power] PWRKEY: wake OLED");
-            wakeDisplay();
+        if (pressed && !powerOffPending()) {
+            const uint32_t pressedAt = millis();
+            if (waitingForSecondPress &&
+                pressedAt - firstPressAt <= Config::POWER_DOUBLE_PRESS_MS) {
+                waitingForSecondPress = false;
+                Serial.println("[power] PWRKEY double press: shutdown");
+                requestPowerOff();
+            } else {
+                firstPressAt = pressedAt;
+                waitingForSecondPress = true;
+                Serial.println("[power] PWRKEY: wake OLED");
+                wakeDisplay();
+            }
         }
     }
     const bool pir = pirReady && digitalRead(Config::PIR_INPUT) == HIGH;
@@ -90,8 +103,9 @@ void updatePower() {
     if (pending.load() && !countdown) {
         requestedAt = now;
         countdown = true;
+        startDisplayAnimation(true);
         wakeDisplay();
-        Serial.println("[power] Browser shutdown requested");
+        Serial.println("[power] Shutdown requested");
     }
 }
 
@@ -102,7 +116,7 @@ bool requestPowerOff() {
 }
 bool powerOffPending() { return pending.load(); }
 bool powerOffDue() {
-    return countdown && millis() - requestedAt >= 2000;
+    return countdown && millis() - requestedAt >= Config::OLED_ANIMATION_MS;
 }
 
 void powerOff() {

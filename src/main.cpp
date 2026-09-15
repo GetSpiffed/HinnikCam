@@ -23,6 +23,7 @@ void setup() {
     startDisplay();
     apReady = startAccessPoint();
     webReady = apReady && startWebServer(cameraReady);
+    startDisplayAnimation(false);
     updateDisplay(cameraReady, apReady, webReady);
     if (!apReady || !webReady) {
         Serial.println("[boot] ERROR: network/webserver failed; restarting in 5 seconds");
