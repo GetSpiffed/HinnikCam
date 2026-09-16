@@ -1,3 +1,14 @@
+// LilyGO T-Camera S3 enclosure with 34 x 56 x 5.2 mm LiPo.
+// Based on espcam_TCameraS3_voorlopig.scad; PCB and component positions unchanged.
+// Housing widened; rear cover deepened; battery supports added.
+// Battery wire exits the middle of the +Y short side (OLED end).
+// Use thin soft pads / nonconductive retention; do not clamp the pouch.
+// Rear mount screw/nut must stay within the 3 mm reserved space.
+// Original USB opening retained. Check actual cable fit.
+// TYPE: preview, front, back, backmount, wallmount.
+// Preview is an exploded view, not the assembled enclosure.
+// Geometry inspected numerically; OpenSCAD render / physical fit not tested.
+
 $fs=0.5;
 $fa=6;
 
@@ -32,11 +43,25 @@ PCB_MOUNT_HOLE_DIA = 3.5;
 // Diameter of PCB rounded edges (has same center as PCB mounting holes)
 PCB_EDGE_DIA = 4.5;
 // PCB width
-PCB_X = 28;
+PCB_X = 28.0;
 // PCB height
-PCB_Y = 68;
+PCB_Y = 69.0;
 // PCB thickness
 PCB_Z = 1.2;
+
+// LiPo dimensions supplied by user; PCB dimensions remain unchanged.
+BATTERY_X = 34;
+BATTERY_Y = 56;
+BATTERY_Z = 5.2;
+BATTERY_CLEARANCE_XY = 0.5;
+BATTERY_CLEARANCE_Z = 0.4;
+// Free zone between battery and rear wall for mount hardware.
+BATTERY_MOUNT_CLEARANCE = 3;
+// Cable exits centrally at +Y, the short side facing the OLED end.
+BATTERY_WIRE_WIDTH = 6;
+BATTERY_WIRE_RUN = 4;
+BATTERY_WIRE_HEIGHT = 3;
+CASE_X = max(PCB_X, BATTERY_X + 2*BATTERY_CLEARANCE_XY);
 
 // OLED width
 OLED_X = 25;
@@ -50,7 +75,7 @@ OLED_Z = 3.7;
 OLED_TOP_OFFSET = 11.6;
 
 // Diameter of camera lens (at top surface)
-LENS_DIA = 8.0 + 0.5;
+LENS_DIA = 7.5 + 0.5;
 // Distance of camera lens center from PCB bottom
 LENS_BOTTOM_OFFSET = 27.5;
 // Z coordinate of camera lens surface
@@ -75,7 +100,7 @@ BUTTON_SIDE_OFFSET = 1.0;
 BUTTON_Z = 5.0;
 
 // Width of micro USB socket
-USB_Y = 7;
+USB_Y = 10;
 // Height of micro USB socket
 USB_X = 7.5;
 // Z coordinate of micro USB socket surface 
@@ -92,7 +117,7 @@ FRONT_WALL_THICKNESS = PCB_Z;
 FRONT_Z = PIR_BASE_Z + FRONT_WALL_THICKNESS;
 
 // Wall clearance in mm
-WALL_CLEARANCE = 0.3;
+WALL_CLEARANCE = 0.4; // voorgestelde proefpassing
 
 // Radius of cover edges
 COVER_SMOOTHER = 1.5;
@@ -101,13 +126,20 @@ COVER_SMOOTHER = 1.5;
 COVER_OVERLAP = 2;
 
 //length of countersunk head screws (M3) to mount the back
-BACK_SCREW_LENGTH = 16;
+ORIGINAL_BACK_SCREW_LENGTH = 16;
+BATTERY_EXTRA_DEPTH = BATTERY_Z + 2*BATTERY_CLEARANCE_Z + BATTERY_MOUNT_CLEARANCE;
+BACK_SCREW_LENGTH = ORIGINAL_BACK_SCREW_LENGTH + BATTERY_EXTRA_DEPTH; // 25 mm
 //head diameter of countersunk head screws (M3)
 BACK_SCREW_HEAD_DIA= 5.5 +0.5;
 //Thickness of back cover
 BACK_Z = BACK_SCREW_LENGTH - FRONT_Z + FRONT_WALL_THICKNESS - COVER_OVERLAP + WALL_CLEARANCE;
 
-//echo("BACK_Z:",BACK_Z);
+BATTERY_SUPPORT_Z = BACK_Z - BATTERY_EXTRA_DEPTH - WALL_THICKNESS;
+BATTERY_BOTTOM_Z = BATTERY_SUPPORT_Z + BATTERY_CLEARANCE_Z;
+assert(BATTERY_Y + 2*BATTERY_CLEARANCE_XY + 2*BATTERY_WIRE_RUN <= PCB_Y);
+assert(BATTERY_WIRE_WIDTH < PCB_X - PCB_EDGE_DIA - M3_HOLE_DIA);
+echo("Case width / length", CASE_X+2*WALL_THICKNESS, PCB_Y+2*WALL_THICKNESS);
+echo("Rear depth / screw length", BACK_Z, BACK_SCREW_LENGTH);
 
 
 //Diameter of a circle used to position the holes of the wall mount
@@ -280,7 +312,7 @@ module front_cover()
 { 
   difference() {
     
-   rounded_cube(-PCB_X/2-WALL_THICKNESS, PCB_Y/2+WALL_THICKNESS, PCB_X + (2*WALL_THICKNESS) ,PCB_Y + (2*WALL_THICKNESS), FRONT_Z, PCB_EDGE_DIA,COVER_SMOOTHER);
+   rounded_cube(-CASE_X/2-WALL_THICKNESS, PCB_Y/2+WALL_THICKNESS, CASE_X + (2*WALL_THICKNESS) ,PCB_Y + (2*WALL_THICKNESS), FRONT_Z, PCB_EDGE_DIA,COVER_SMOOTHER);
       
     
     translate([0,0,-0.01]) espcam(true);
@@ -430,9 +462,9 @@ module back_cover()
     {   
       //shell
       difference() {
-        rounded_cube(-PCB_X/2-T, PCB_Y/2+T, PCB_X + (2*T) ,PCB_Y + (2*T), BACK_Z, PCB_EDGE_DIA,COVER_SMOOTHER);
+        rounded_cube(-CASE_X/2-T, PCB_Y/2+T, CASE_X + (2*T) ,PCB_Y + (2*T), BACK_Z, PCB_EDGE_DIA,COVER_SMOOTHER);
           
-        translate([0,0,-0.01]) rounded_cube(-PCB_X/2-C, PCB_Y/2+C, PCB_X+(2*C) ,PCB_Y+(2*C), BACK_Z-T, PCB_EDGE_DIA,COVER_SMOOTHER);
+        translate([0,0,-0.01]) rounded_cube(-CASE_X/2-C, PCB_Y/2+C, CASE_X+(2*C) ,PCB_Y+(2*C), BACK_Z-T, PCB_EDGE_DIA,COVER_SMOOTHER);
         
         for (x = [x_off, -x_off], y = [y_off, -y_off]) {
           translate([x,y,z/2+FIX_CLEAR]) {
@@ -443,14 +475,21 @@ module back_cover()
        cylinder(h=4*z, d=M3_HOLE_DIA, center=true);
         
       }
+      // Battery edge supports, attached to the wider side walls.
+      for (side=[-1,1]) {
+        rail_x = CASE_X/2 + C;
+        translate([side > 0 ? rail_x-1.8 : -rail_x-0.1,
+                   -BATTERY_Y/2+1, BATTERY_SUPPORT_Z-1.2])
+          cube([1.9, BATTERY_Y-2, 1.2]);
+      }
       //overlap
       //left_x, top_y, width_x, height_y, thickness_z, edge_dia, smooth=0
       //T = WALL_THICKNESS/2;
       W = (T/2) * 0.9;
       translate([0,0,-COVER_OVERLAP+0.01]) difference() {
-        rounded_cube(-PCB_X/2-T, PCB_Y/2+T, PCB_X + (2*T) ,PCB_Y + (2*T), COVER_OVERLAP, PCB_EDGE_DIA);
+        rounded_cube(-CASE_X/2-T, PCB_Y/2+T, CASE_X + (2*T) ,PCB_Y + (2*T), COVER_OVERLAP, PCB_EDGE_DIA);
         
-        translate([0,0,-0.1])rounded_cube(-PCB_X/2-T+W, PCB_Y/2+T-W, PCB_X + (2*T) - (2*W) ,PCB_Y + (2*T) - (2*W), 2*COVER_OVERLAP, PCB_EDGE_DIA);   
+        translate([0,0,-0.1])rounded_cube(-CASE_X/2-T+W, PCB_Y/2+T-W, CASE_X + (2*T) - (2*W) ,PCB_Y + (2*T) - (2*W), 2*COVER_OVERLAP, PCB_EDGE_DIA);   
           }      
      
       // PCB fixing edges   
@@ -489,9 +528,19 @@ module overlap()
   T = WALL_THICKNESS/2;
   translate([0,0,-COVER_OVERLAP+0.01])
   difference() {
-    rounded_cube(-PCB_X/2-T, PCB_Y/2+T, PCB_X + (2*T) ,PCB_Y + (2*T), COVER_OVERLAP, PCB_EDGE_DIA);
+    rounded_cube(-CASE_X/2-T, PCB_Y/2+T, CASE_X + (2*T) ,PCB_Y + (2*T), COVER_OVERLAP, PCB_EDGE_DIA);
     translate([0,0,-0.05]) espcam(true);
   }
+}
+
+// Preview only: battery envelope and central short-side wire route.
+// The remaining rear cavity is open, so the wire can bend toward the PCB.
+module battery_preview() {
+  color("silver") translate([-BATTERY_X/2,-BATTERY_Y/2,BATTERY_BOTTOM_Z])
+    cube([BATTERY_X,BATTERY_Y,BATTERY_Z]);
+  color("red") translate([-BATTERY_WIRE_WIDTH/2,BATTERY_Y/2,
+                           BATTERY_BOTTOM_Z])
+    cube([BATTERY_WIRE_WIDTH,BATTERY_WIRE_RUN,BATTERY_WIRE_HEIGHT]);
 }
 
 if ("preview" == TYPE) {
@@ -507,6 +556,7 @@ if ("preview" == TYPE) {
 
   translate([0,0,-BACK_Z]) rotate([0,180,0]){
     back_cover();
+    %battery_preview();
     //translate([0,0,-(2*WALL_THICKNESS+BALL_COVER_DIA)] 
     translate([0,0,2*WALL_THICKNESS+BALL_COVER_DIA+BACK_Z]){
        //some fancy rotation animation... 
@@ -538,5 +588,6 @@ if ("preview" == TYPE) {
   }
   
 }
+
 
 
