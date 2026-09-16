@@ -57,12 +57,12 @@ and bundled ESP-IDF/camera components retain their upstream licenses.
 The SSD1306 constructor, rotation and shared I2C setup follow
 LilyGO's examples/MinimalScreenExample/MinimalScreenExample.ino at the same
 reference commit above (MIT, Copyright (c) 2022 Shenzhen Xin Yuan Electronic
-Technology Co., Ltd). The status layout is specific to HinnikCam.
+Technology Co., Ltd). The status layout is specific to SpecialCam.
 
 U8g2 tag 2.37.1 (library metadata reports 2.36.19) is pinned to commit bb6ebd14bdbe7a3b483cf0214ca6a38156870e37
 in https://github.com/olikraus/U8g2_Arduino and installed with its upstream
 BSD-2-Clause license.
 Power key timing, battery measurement and PIR ALDO3 setup follow
 examples/MinimalPowersExample/MinimalPowersExample.ino at the LilyGO commit
-listed above (MIT). HinnikCam leaves charger configuration unchanged and
+listed above (MIT). SpecialCam leaves charger configuration unchanged and
 uses PIR only to wake the OLED, not to control camera availability.

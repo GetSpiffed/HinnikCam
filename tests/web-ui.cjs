@@ -38,7 +38,7 @@ async function fixture({confirmed=true,shutdownOK=true,captureOK=true,offline=fa
     assert.equal(calls.length,confirmed?1:0);
     if(confirmed){
       assert.equal(calls[0].options.method,'POST');
-      assert.equal(calls[0].options.headers['X-HinnikCam-Confirm'],'yes');
+      assert.equal(calls[0].options.headers['X-SpecialCam-Confirm'],'yes');
       assert.equal(f.elements.capture.disabled,true);
       assert.match(f.elements.status.textContent,/schakelt uit/);
     }
@@ -50,7 +50,7 @@ async function fixture({confirmed=true,shutdownOK=true,captureOK=true,offline=fa
   f=await fixture();
   await f.elements.capture.onclick();
   assert.equal(f.downloads.length,1);
-  assert.match(f.downloads[0],/^HinnikCam-.*.jpg$/);
+  assert.match(f.downloads[0],/^SpecialCam-.*.jpg$/);
   assert.equal(f.elements['photo-open'].hidden,false);
   assert.equal(f.elements.capture.disabled,false);
   f=await fixture({captureOK:false});

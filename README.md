@@ -1,6 +1,6 @@
-# HinnikCam
+# SpecialCam
 
-Een minimale, zelfstandige paardentrailercamera: **telefoon → HinnikCam-wifi → browser → live beeld**. Geen router, cloud of internet nodig tijdens gebruik.
+Een minimale, zelfstandige paardentrailercamera: **telefoon → SpecialCam-wifi → browser → live beeld**. Geen router, cloud of internet nodig tijdens gebruik.
 
 ## Hardware en basis
 
@@ -31,10 +31,10 @@ Wordt het board niet gevonden, houd **BOOT** ingedrukt, druk kort **RESET**, laa
 
 ## Verbinden
 
-1. Zet het board aan en verbind de telefoon met wifi **HinnikCam**.
+1. Zet het board aan en verbind de telefoon met wifi **SpecialCam**.
 2. Standaard is dit een **open netwerk zonder wachtwoord**. Stel desgewenst `AP_PASSWORD` in `include/config.h` in op minimaal 8 tekens en flash opnieuw.
 3. Kies op de telefoon **verbonden blijven zonder internet**. Schakel automatisch overschakelen naar mobiele data uit als de telefoon de lokale verbinding verlaat.
-4. Open expliciet [http://hinnikcam.nl/](http://hinnikcam.nl/). [http://192.168.4.1/](http://192.168.4.1/) blijft werken als terugval.
+4. Open expliciet [http://specialcam.nl/](http://specialcam.nl/). [http://192.168.4.1/](http://192.168.4.1/) blijft werken als terugval.
 
 Directe MJPEG-stream: [http://192.168.4.1:81/stream](http://192.168.4.1:81/stream). Het korte adres [http://192.168.4.1/stream](http://192.168.4.1/stream) verwijst daarnaar door. Geen captive portal of HTTPS.
 
@@ -44,23 +44,23 @@ Na verbreken ruimt de server de streamverbinding op en accepteert hij opnieuw ee
 
 ## Lokale hostnaam
 
-De ESP32 draait een lokale DNS-server op UDP-poort 53. Het accesspoint geeft via DHCP 192.168.4.1 als DNS-server aan verbonden telefoons door. hinnikcam.nl (ook www.hinnikcam.nl) verwijst daar naar het board, met een DNS-cachetijd van 10 seconden. Alleen deze naam wordt opgelost; er is geen wildcard-DNS of captive portal toegevoegd.
+De ESP32 draait een lokale DNS-server op UDP-poort 53. Het accesspoint geeft via DHCP 192.168.4.1 als DNS-server aan verbonden telefoons door. specialcam.nl (ook www.specialcam.nl) verwijst daar naar het board, met een DNS-cachetijd van 10 seconden. Alleen deze naam wordt opgelost; er is geen wildcard-DNS of captive portal toegevoegd.
 
-Verbind na deze firmware-update opnieuw met HinnikCam-wifi zodat de telefoon de DHCP-instellingen vernieuwt. Gebruik expliciet http://hinnikcam.nl: HTTPS wordt niet ondersteund. VPN, privé-DNS of beveiligde DNS kan de lokale DNS-server omzeilen; gebruik dan het vaste IP-adres.
+Verbind na deze firmware-update opnieuw met SpecialCam-wifi zodat de telefoon de DHCP-instellingen vernieuwt. Gebruik expliciet http://specialcam.nl: HTTPS wordt niet ondersteund. VPN, privé-DNS of beveiligde DNS kan de lokale DNS-server omzeilen; gebruik dan het vaste IP-adres.
 
 Er is geen domeinregistratie of publieke DNS-aanpassing gedaan. Op een ander netwerk gelden de DNS-instellingen van dat netwerk. Een client kan kort een eerder DNS-antwoord bewaren; de TTL is een aanwijzing voor de client, geen gegarandeerde bovengrens.
 
 LOCAL_HOSTNAME en DNS_TTL_SECONDS staan in include/config.h. De DNS-server stopt tijdens gecontroleerd uitschakelen.
 
-Controle op een computer die met HinnikCam-wifi verbonden is:
-nslookup hinnikcam.nl 192.168.4.1
-Dit moet 192.168.4.1 opleveren. Controleer daarna ook nslookup hinnikcam.nl zonder expliciete server om de via DHCP verstrekte DNS te testen.
+Controle op een computer die met SpecialCam-wifi verbonden is:
+nslookup specialcam.nl 192.168.4.1
+Dit moet 192.168.4.1 opleveren. Controleer daarna ook nslookup specialcam.nl zonder expliciete server om de via DHCP verstrekte DNS te testen.
 
 ## Foto opslaan en webinterface
 
 De mobiele webpagina zet het camerabeeld centraal, met knoppen voor Foto opslaan en Opnieuw verbinden. Verbindings- en voedingsstatus staan in aparte blokken; technische gegevens zijn uitklapbaar en uitschakelen staat apart onderaan.
 
-Kies **Foto opslaan** om een JPEG op te halen en te downloaden als HinnikCam-[datum-tijd].jpg. Het is een cameraframe op de ingestelde resolutie (640x480), geen screenshot van de webpagina. Het frame kan iets verschillen van wat de vertraagde browserstream op dat moment toont. Als downloaden op je telefoon anders wordt afgehandeld, kies **Open foto** en gebruik de bewaar-/deelfunctie van je browser.
+Kies **Foto opslaan** om een JPEG op te halen en te downloaden als SpecialCam-[datum-tijd].jpg. Het is een cameraframe op de ingestelde resolutie (640x480), geen screenshot van de webpagina. Het frame kan iets verschillen van wat de vertraagde browserstream op dat moment toont. Als downloaden op je telefoon anders wordt afgehandeld, kies **Open foto** en gebruik de bewaar-/deelfunctie van je browser.
 
 Direct foto-endpoint: http://192.168.4.1/capture. De camera blijft streamen; een foto kan kort capaciteit delen met de stream. Foto's worden niet op het board bewaard. Er zijn geen externe scripts, lettertypen of diensten nodig.
 
@@ -70,7 +70,7 @@ Direct foto-endpoint: http://192.168.4.1/capture. De camera blijft streamen; een
 - **PWRKEY dubbel kort drukken (binnen 600 ms):** dezelfde afsluitroutine als de webknop, inclusief paardenanimatie. De eerste druk maakt het OLED direct wakker.
 - **PWRKEY 6 seconden vasthouden:** uitschakelen via de voedingschip.
 - **PWRKEY kort wanneer uit:** het board aanzetten (ingestelde drempel 128 ms).
-- **Browserknop HinnikCam uitschakelen:** bevestig de melding. Stream en webserver stoppen, de camera wordt vrijgegeven en daarna schakelt de AXP2101 uit. Weer aanzetten gebeurt bij het board, niet via wifi.
+- **Browserknop SpecialCam uitschakelen:** bevestig de melding. Stream en webserver stoppen, de camera wordt vrijgegeven en daarna schakelt de AXP2101 uit. Weer aanzetten gebeurt bij het board, niet via wifi.
 - **OLED:** slaapt na 60 seconden zonder knop- of PIR-activiteit. Camera en wifi blijven werken. Beweging voor de PIR maakt alleen het OLED wakker; zolang het PIR-signaal actief blijft, blijft het scherm aan. De PIR kan na inschakelen enige tijd actief/onrustig zijn.
 - Het OLED en de webpagina tonen USB-/accuvoeding, accuspanning en de door de PMU gemelde laadstatus. Geen percentage: spanning is geen betrouwbare directe procentindicatie.
 - Geen automatische uitschakeling bij verlies van wifi. Lage-accuwaarschuwing en een uitschakelgrens zijn nog vervolgstappen.
@@ -78,15 +78,15 @@ Direct foto-endpoint: http://192.168.4.1/capture. De camera blijft streamen; een
 
 OLED_IDLE_MS in include/config.h bepaalt de slaapvertraging. De ESP32 zelf gaat niet in deep sleep: voor langer niet-gebruik blijft uitschakelen nodig. Test het uitschakelen ook op uitsluitend accuvoeding; aangesloten USB kan het voedings-/herstartgedrag beïnvloeden.
 
-De webactie gebruikt POST /shutdown met X-HinnikCam-Confirm: yes; een gewone GET schakelt niets uit. Iedere verbonden client kan deze actie aanvragen. HTTP-taken lezen alleen een threadveilige voedingssnapshot; PMU en OLED gebruiken de I2C-bus uitsluitend vanuit de hoofdtaak.
+De webactie gebruikt POST /shutdown met X-SpecialCam-Confirm: yes; een gewone GET schakelt niets uit. Iedere verbonden client kan deze actie aanvragen. HTTP-taken lezen alleen een threadveilige voedingssnapshot; PMU en OLED gebruiken de I2C-bus uitsluitend vanuit de hoofdtaak.
 
 ## OLED-status
 
 Het ingebouwde SSD1306-scherm (128x64, I2C-adres 0x3C) toont:
 
-- HinnikCam
+- SpecialCam
 - Wifi: AP actief of FOUT
-- Webadres http://hinnikcam.nl
+- Webadres http://specialcam.nl
 - Aantal verbonden wifi-clients
 - Camera: LIVE, gereed of FOUT
 - USB-/accuvoeding, accuspanning en eventuele laadstatus

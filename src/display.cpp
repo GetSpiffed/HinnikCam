@@ -152,7 +152,7 @@ void drawAnimation(uint32_t elapsed) {
         phase = rearTime / 260.0f * 6.2831853f;
     }
     oled.clearBuffer();
-    oled.drawStr(37, 10, "HinnikCam");
+    oled.drawStr(37, 10, "SpecialCam");
     drawHorse(x, rear, phase, run, crouch);
     oled.drawHLine(0, 52, 128);
     const char* caption = goodbye ? "Tot de volgende rit!" : "Klaar voor de rit!";
@@ -225,7 +225,7 @@ void updateDisplay(bool cameraReady, bool apReady, bool webReady) {
     }
     char line[24];
     oled.clearBuffer();
-    oled.drawStr(0, 10, powerOffPending() ? "Uitschakelen..." : "HinnikCam");
+    oled.drawStr(0, 10, powerOffPending() ? "Uitschakelen..." : "SpecialCam");
     oled.drawHLine(0, 13, 128);
     oled.drawStr(0, 23, apReady ? "Wifi: AP actief" : "Wifi: FOUT");
     snprintf(line, sizeof(line), "http://%s", Config::LOCAL_HOSTNAME);

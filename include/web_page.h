@@ -6,7 +6,7 @@ const char WEB_PAGE[] PROGMEM = R"HTML(<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#101b17">
-<title>HinnikCam</title>
+<title>SpecialCam</title>
 <style>
 :root{color-scheme:dark;--bg:#101b17;--panel:#192720;--line:#304239;--text:#eff4ec;--muted:#a5b6aa;--green:#c3e697;--danger:#f1afa2}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,sans-serif}
@@ -47,7 +47,7 @@ footer p{font-size:11px;color:var(--muted);margin:0}.power-button{display:flex;a
 <body>
 <main class="shell">
 <header>
- <div class="brand"><span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 19V9l4-5 3 2 4-2 2 7-5 3v5M9 4V2m7 2 2-2M5 10l8 4m-3 5h6"/><path d="M13 8h.01"/></svg></span><div><h1>HinnikCam</h1><p class="tagline">Zicht op je paard.</p></div></div>
+ <div class="brand"><span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 19V9l4-5 3 2 4-2 2 7-5 3v5M9 4V2m7 2 2-2M5 10l8 4m-3 5h6"/><path d="M13 8h.01"/></svg></span><div><h1>SpecialCam</h1><p class="tagline">Zicht op je paard.</p></div></div>
  <span class="local">Direct via wifi</span>
 </header>
 <section aria-label="Live camera">
@@ -61,7 +61,7 @@ footer p{font-size:11px;color:var(--muted);margin:0}.power-button{display:flex;a
  <p class="action-note" aria-live="polite"><span id="photo-status">Bewaar een camerabeeld op je telefoon.</span><a id="photo-open" hidden target="_blank" rel="noopener">Open foto</a></p>
 </section>
 <section class="metrics" aria-label="Apparaatstatus">
- <div class="metric"><div class="metric-label"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M2 8a16 16 0 0 1 20 0M5 12a11 11 0 0 1 14 0M8 16a6 6 0 0 1 8 0M12 20h.01"/></svg>Verbinding</div><strong id="connection">HinnikCam</strong><small id="clients">Status ophalen…</small></div>
+ <div class="metric"><div class="metric-label"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M2 8a16 16 0 0 1 20 0M5 12a11 11 0 0 1 14 0M8 16a6 6 0 0 1 8 0M12 20h.01"/></svg>Verbinding</div><strong id="connection">SpecialCam</strong><small id="clients">Status ophalen…</small></div>
  <div class="metric"><div class="metric-label"><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="2" y="6" width="17" height="12" rx="2"/><path d="M22 10v4M6 10v4m4-4v4"/></svg>Voeding</div><strong id="power">Status ophalen…</strong><small id="battery">Accustatus ophalen…</small></div>
 </section>
 <details><summary>Verbindingsgegevens</summary><div class="details-body"><p id="info">IP-adres wordt opgehaald.</p><p>Geen internet nodig. Stilstaand beeld? Kies opnieuw verbinden.</p><a href="/stream" target="_blank" rel="noopener">Directe camerastream openen ↗</a></div></details>
@@ -101,7 +101,7 @@ el('capture').onclick=async()=>{
     photoUrl=URL.createObjectURL(blob);
     const download=document.createElement('a');
     download.href=photoUrl;
-    download.download='HinnikCam-'+new Date().toISOString().replace(/[:.]/g,'-')+'.jpg';
+    download.download='SpecialCam-'+new Date().toISOString().replace(/[:.]/g,'-')+'.jpg';
     document.body.appendChild(download);download.click();download.remove();
     el('photo-open').href=photoUrl;el('photo-open').hidden=false;
     el('photo-status').textContent='Download gestart. Lukt opslaan niet?';
@@ -116,14 +116,14 @@ function showShutdown(){
   camera.removeAttribute('src');
   el('shutdown').disabled=true;el('restart').disabled=true;
   badge('Uitschakelen','waiting');
-  status.textContent='HinnikCam schakelt uit. Aanzetten met PWRKEY op het board.';
+  status.textContent='SpecialCam schakelt uit. Aanzetten met PWRKEY op het board.';
 }
 el('shutdown').onclick=async()=>{
-  if(!confirm('HinnikCam uitschakelen? Wifi en camera stoppen. Weer aanzetten kan alleen bij het board.'))return;
+  if(!confirm('SpecialCam uitschakelen? Wifi en camera stoppen. Weer aanzetten kan alleen bij het board.'))return;
   el('shutdown').disabled=true;
   const controller=new AbortController(), timer=setTimeout(()=>controller.abort(),5000);
   try{
-    const response=await fetch('/shutdown',{method:'POST',headers:{'X-HinnikCam-Confirm':'yes'},signal:controller.signal});
+    const response=await fetch('/shutdown',{method:'POST',headers:{'X-SpecialCam-Confirm':'yes'},signal:controller.signal});
     if(!response.ok)throw Error();
     showShutdown();
   }catch{
@@ -142,14 +142,14 @@ async function poll(){
     el('power').textContent=!s.power_ready?'Onbekend':s.usb?'USB-voeding':'Accuvoeding';
     el('battery').textContent=!s.power_ready?'Geen voedingsgegevens':
       s.battery && s.battery_mv>0?'Accu '+(s.battery_mv/1000).toFixed(2)+' V'+(s.charging?' · Laden':''):'Geen accumeting';
-    el('connection').textContent='HinnikCam';
+    el('connection').textContent='SpecialCam';
     el('clients').textContent=s.clients+' '+(s.clients===1?'apparaat verbonden':'apparaten verbonden');
     el('info').textContent='Adres: http://'+(s.hostname || s.ip)+' · IP: '+s.ip+' · VGA 640 × 480 · JPEG';
     if(!s.camera_ready){badge('Camerafout','offline');status.textContent='Camera niet beschikbaar. Controleer het board en herstart.';}
     else if(s.streaming && s.frame_age_ms<3000){badge('Live','live');status.textContent='Verbonden · De camera verstuurt beelden.';}
     else{badge('Wachten op beeld','waiting');status.textContent='Verbonden · Nog geen recente beelden. Verbind zo nodig opnieuw.';}
   }catch{
-    if(!shuttingDown){cameraReady=false;syncCapture();badge('Offline','offline');status.textContent='Geen verbinding. Verbind je telefoon met HinnikCam-wifi.';el('connection').textContent='Niet bereikbaar';el('clients').textContent='Controleer de wifi-verbinding';}
+    if(!shuttingDown){cameraReady=false;syncCapture();badge('Offline','offline');status.textContent='Geen verbinding. Verbind je telefoon met SpecialCam-wifi.';el('connection').textContent='Niet bereikbaar';el('clients').textContent='Controleer de wifi-verbinding';}
   }finally{clearTimeout(timer);if(!shuttingDown)setTimeout(poll,2000);}
 }
 start();poll();

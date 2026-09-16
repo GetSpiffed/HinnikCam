@@ -17,7 +17,7 @@ void setup() {
     Serial.begin(115200);
     // Standalone startup must never wait for USB Serial.
     delay(300);
-    Serial.println("\nHinnikCam starting");
+    Serial.println("\nSpecialCam starting");
     const bool cameraPowered = startPower();
     cameraReady = cameraPowered && startCamera();
     startDisplay();

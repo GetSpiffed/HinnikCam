@@ -16,7 +16,7 @@ httpd_handle_t webServer = nullptr, streamServer = nullptr;
 bool cameraReady = false; // Written before either HTTP task starts.
 std::atomic<bool> streaming{false};
 std::atomic<uint32_t> lastFrameMs{0};
-constexpr char BOUNDARY[] = "\r\n--hinnikcamframe\r\n";
+constexpr char BOUNDARY[] = "\r\n--specialcamframe\r\n";
 
 esp_err_t indexHandler(httpd_req_t *req) {
     httpd_resp_set_type(req, "text/html; charset=utf-8");
@@ -54,7 +54,7 @@ esp_err_t captureHandler(httpd_req_t *req) {
     }
     httpd_resp_set_type(req, "image/jpeg");
     httpd_resp_set_hdr(req, "Cache-Control", "no-store");
-    httpd_resp_set_hdr(req, "Content-Disposition", "attachment; filename=HinnikCam.jpg");
+    httpd_resp_set_hdr(req, "Content-Disposition", "attachment; filename=SpecialCam.jpg");
     const esp_err_t result = httpd_resp_send(req, reinterpret_cast<const char *>(fb->buf), fb->len);
     esp_camera_fb_return(fb); // Also release on browser timeout/disconnect.
     Serial.printf("[capture] Photo request: %s\n", esp_err_to_name(result));
@@ -64,7 +64,7 @@ esp_err_t captureHandler(httpd_req_t *req) {
 esp_err_t shutdownHandler(httpd_req_t *req) {
     // Custom header prevents accidental GETs and simple cross-origin form POSTs.
     char confirm[8] = {};
-    if (httpd_req_get_hdr_value_str(req, "X-HinnikCam-Confirm", confirm, sizeof(confirm)) != ESP_OK ||
+    if (httpd_req_get_hdr_value_str(req, "X-SpecialCam-Confirm", confirm, sizeof(confirm)) != ESP_OK ||
         strcmp(confirm, "yes") != 0) {
         return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Confirmation required");
     }
@@ -91,7 +91,7 @@ esp_err_t streamHandler(httpd_req_t *req) {
         httpd_resp_set_status(req, "503 Service Unavailable");
         return httpd_resp_send(req, "Camera initialization failed; check Serial", HTTPD_RESP_USE_STRLEN);
     }
-    httpd_resp_set_type(req, "multipart/x-mixed-replace;boundary=hinnikcamframe");
+    httpd_resp_set_type(req, "multipart/x-mixed-replace;boundary=specialcamframe");
     httpd_resp_set_hdr(req, "Cache-Control", "no-store");
     Serial.println("[stream] Client connected");
     lastFrameMs.store(millis() - 3000); // No fresh frame until the first successful send.
