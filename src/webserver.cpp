@@ -9,6 +9,7 @@
 #include <WiFi.h>
 #include <atomic>
 #include <esp_camera.h>
+#include <esp_heap_caps.h>
 #include <esp_http_server.h>
 
 namespace {
@@ -45,18 +46,28 @@ esp_err_t captureHandler(httpd_req_t *req) {
         httpd_resp_set_status(req, "503 Service Unavailable");
         return httpd_resp_send(req, "Camera unavailable", HTTPD_RESP_USE_STRLEN);
     }
-    // The driver owns a queue of two PSRAM buffers. A still capture borrows
-    // one independently of the stream; never reconfigure or restart the sensor.
+    // The driver owns a queue of two PSRAM buffers. Copy a still image before
+    // starting the HTTP response so a slow download cannot hold a camera buffer
+    // and stall the active MJPEG pipeline.
     camera_fb_t *fb = esp_camera_fb_get();
     if (!fb) {
         Serial.println("[camera] ERROR: photo capture failed");
         return httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Capture failed");
     }
+    uint8_t *jpeg = static_cast<uint8_t *>(heap_caps_malloc(fb->len, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+    if (!jpeg) {
+        esp_camera_fb_return(fb);
+        Serial.println("[capture] ERROR: PSRAM allocation failed");
+        return httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Capture memory unavailable");
+    }
+    const size_t jpegLength = fb->len;
+    memcpy(jpeg, fb->buf, jpegLength);
+    esp_camera_fb_return(fb);
     httpd_resp_set_type(req, "image/jpeg");
     httpd_resp_set_hdr(req, "Cache-Control", "no-store");
     httpd_resp_set_hdr(req, "Content-Disposition", "attachment; filename=SpecialCam.jpg");
-    const esp_err_t result = httpd_resp_send(req, reinterpret_cast<const char *>(fb->buf), fb->len);
-    esp_camera_fb_return(fb); // Also release on browser timeout/disconnect.
+    const esp_err_t result = httpd_resp_send(req, reinterpret_cast<const char *>(jpeg), jpegLength);
+    heap_caps_free(jpeg);
     Serial.printf("[capture] Photo request: %s\n", esp_err_to_name(result));
     return result;
 }
@@ -154,6 +165,7 @@ bool startWebServer(bool ready) {
     // A synchronous MJPEG handler occupies its HTTP task. Keep UI/status separate.
     config.server_port = Config::STREAM_PORT;
     config.ctrl_port += 1;
+    config.send_wait_timeout = Config::STREAM_SEND_WAIT_TIMEOUT_S;
     err = httpd_start(&streamServer, &config);
     if (err != ESP_OK) {
         Serial.printf("[web] ERROR stream startup: %s\n", esp_err_to_name(err));

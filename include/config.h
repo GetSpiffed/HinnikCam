@@ -12,6 +12,7 @@ constexpr uint8_t AP_MAX_CLIENTS = 2; // One simultaneous stream supported.
 constexpr uint16_t WEB_PORT = 80;
 constexpr uint16_t STREAM_PORT = 81;
 constexpr uint8_t TARGET_FPS = 12; // Send-rate ceiling, not a sensor FPS guarantee.
+constexpr uint16_t STREAM_SEND_WAIT_TIMEOUT_S = 1; // Drop stalled clients quickly; never let one add multi-second lag.
 constexpr int JPEG_QUALITY = 12; // Lower is better quality / more traffic.
 constexpr bool VFLIP = true;
 constexpr bool HMIRROR = true; // Orientation from LilyGO MinimalCameraExample.
