@@ -25,7 +25,7 @@ $vpd = 350;
 */
 
 // Type of model 
-TYPE = "front"; // [preview, front, back, backmount, wallmount]
+TYPE = "back"; // [preview, front, back, backmount, wallmount]
 
 //M3 hole
 M3_HOLE_DIA = 3.8;
@@ -77,19 +77,19 @@ OLED_TOP_OFFSET = 11.6;
 // Diameter of camera lens (at top surface)
 LENS_DIA = 7.5 + 0.5;
 // Distance of camera lens center from PCB bottom
-LENS_BOTTOM_OFFSET = 27.5;
+LENS_BOTTOM_OFFSET = 29.0;
 // Z coordinate of camera lens surface
 LENS_Z = 10;
 
 // Diameter of PIR sensor cap
-PIR_DIA = 12.5+0.5;
+PIR_DIA = 14.0+0.5;
 // Distance of PIR sensor cap from PCB bottom
 PIR_BOTTOM_OFFSET = 14;
 // Z coordinate of PIR sensor cap base (lowest Z of removable cap)
 PIR_BASE_Z = 5.0;
 
 // Width/height of buttons
-BUTTON_XY = 5+0.5;
+BUTTON_XY = 5.3+0.5;
 // Diameter of buttons rounded edges
 BUTTON_EDGE_DIA = 1.5;
 // Distance of buttons from PCB bottom (should be the aligned with the PIR sensor)
@@ -102,9 +102,9 @@ BUTTON_Z = 5.0;
 // Width of micro USB socket
 USB_Y = 10;
 // Height of micro USB socket
-USB_X = 7.5;
+USB_X = 10;
 // Z coordinate of micro USB socket surface 
-USB_Z = 2.45 - PCB_Z;
+USB_Z = 2.95 - PCB_Z;
 // Distance of USB socket from PCB bottom
 USB_BOTTOM_OFFSET = -1.5;
 
