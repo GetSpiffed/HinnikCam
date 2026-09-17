@@ -1,7 +1,9 @@
 // LilyGO T-Camera S3 enclosure with 34 x 56 x 5.2 mm LiPo.
 // Based on espcam_TCameraS3_voorlopig.scad; PCB and component positions unchanged.
 // Housing widened; rear cover deepened; battery supports added.
-// Battery wire exits the middle of the +Y short side (OLED end).
+// The board-side JST connector is on the +X edge.  Its cable goes around that
+// edge and then down into the rear battery pocket; it is never pinched between
+// the PCB and the LiPo.
 // Use thin soft pads / nonconductive retention; do not clamp the pouch.
 // Rear mount screw/nut must stay within the 3 mm reserved space.
 // Original USB opening retained. Check actual cable fit.
@@ -55,12 +57,26 @@ BATTERY_Y = 56;
 BATTERY_Z = 5.2;
 BATTERY_CLEARANCE_XY = 0.5;
 BATTERY_CLEARANCE_Z = 0.4;
-// Free zone between battery and rear wall for mount hardware.
-BATTERY_MOUNT_CLEARANCE = 3;
-// Cable exits centrally at +Y, the short side facing the OLED end.
-BATTERY_WIRE_WIDTH = 6;
-BATTERY_WIRE_RUN = 4;
-BATTERY_WIRE_HEIGHT = 3;
+// The battery rests directly on the inside of the rear wall.  The central
+// mounting screw is countersunk flush below it in back_cover().
+BATTERY_MOUNT_CLEARANCE = 0;
+// Battery-cable route.  Adjust CONNECTOR_Y if a different revision of the
+// board places the JST connector elsewhere.  +X is the right-hand PCB edge
+// when viewing the component side as in the reference photograph.
+BATTERY_CONNECTOR_SIDE = 1;
+BATTERY_CONNECTOR_Y = -8;
+JST_CONNECTOR_WIDTH = 5.5;
+JST_CONNECTOR_HEIGHT = 3.0;
+JST_CONNECTOR_PCB_OVERLAP = 0.3;
+BATTERY_CABLE_WIDTH = 4.5;
+BATTERY_CABLE_HEIGHT = 2.0;
+BATTERY_CABLE_CLEARANCE = 0.6;
+// Four rounded wall ribs locate the LiPo.  Their elliptical cross-section
+// grows gradually from the wall and avoids a sudden printable overhang.
+BATTERY_RETAINING_TAB_OVERHANG = 0.8;
+BATTERY_RETAINING_TAB_WIDTH = 6.0;
+BATTERY_END_STOP_DEPTH = 2.0;
+BATTERY_RETAINER_RADIUS_Z = 1.2;
 CASE_X = max(PCB_X, BATTERY_X + 2*BATTERY_CLEARANCE_XY);
 
 // OLED width
@@ -95,7 +111,7 @@ BUTTON_EDGE_DIA = 1.5;
 // Distance of buttons from PCB bottom (should be the aligned with the PIR sensor)
 BUTTON_BOTTOM_OFFSET = PIR_BOTTOM_OFFSET - (BUTTON_XY/2);
 // Distance of buttons from PCB side
-BUTTON_SIDE_OFFSET = 1.0; 
+BUTTON_SIDE_OFFSET = 0.8; 
 // Z coordinate of button surface
 BUTTON_Z = 5.0;
 
@@ -128,16 +144,28 @@ COVER_OVERLAP = 2;
 //length of countersunk head screws (M3) to mount the back
 ORIGINAL_BACK_SCREW_LENGTH = 16;
 BATTERY_EXTRA_DEPTH = BATTERY_Z + 2*BATTERY_CLEARANCE_Z + BATTERY_MOUNT_CLEARANCE;
-BACK_SCREW_LENGTH = ORIGINAL_BACK_SCREW_LENGTH + BATTERY_EXTRA_DEPTH; // 25 mm
+BACK_SCREW_LENGTH = ORIGINAL_BACK_SCREW_LENGTH + BATTERY_EXTRA_DEPTH;
 //head diameter of countersunk head screws (M3)
 BACK_SCREW_HEAD_DIA= 5.5 +0.5;
 //Thickness of back cover
 BACK_Z = BACK_SCREW_LENGTH - FRONT_Z + FRONT_WALL_THICKNESS - COVER_OVERLAP + WALL_CLEARANCE;
 
-BATTERY_SUPPORT_Z = BACK_Z - BATTERY_EXTRA_DEPTH - WALL_THICKNESS;
-BATTERY_BOTTOM_Z = BATTERY_SUPPORT_Z + BATTERY_CLEARANCE_Z;
-assert(BATTERY_Y + 2*BATTERY_CLEARANCE_XY + 2*BATTERY_WIRE_RUN <= PCB_Y);
-assert(BATTERY_WIRE_WIDTH < PCB_X - PCB_EDGE_DIA - M3_HOLE_DIA);
+BATTERY_REAR_Z = BACK_Z-WALL_THICKNESS;
+BATTERY_FRONT_Z = BATTERY_REAR_Z-BATTERY_Z;
+BATTERY_RETAINER_CENTER_X = CASE_X/2+WALL_CLEARANCE-WALL_CLEARANCE/4;
+BATTERY_RETAINER_RADIUS_X = BATTERY_RETAINER_CENTER_X-
+                            (BATTERY_X/2-BATTERY_RETAINING_TAB_OVERHANG);
+BATTERY_RETAINER_CENTER_Z = BATTERY_FRONT_Z-BATTERY_CLEARANCE_Z-
+                            BATTERY_RETAINER_RADIUS_Z;
+// Centre of the narrow free space beside the PCB.  Keeping the route here
+// preserves the outside wall and leaves the battery footprint untouched.
+BATTERY_CABLE_X = BATTERY_CONNECTOR_SIDE *
+                  (PCB_X/2 + (CASE_X/2 - WALL_CLEARANCE - PCB_X/2)/2);
+assert(abs(BATTERY_CONNECTOR_Y) + BATTERY_CABLE_WIDTH/2 + BATTERY_CABLE_CLEARANCE < BATTERY_Y/2);
+assert(abs(BATTERY_CABLE_X) + BATTERY_CABLE_HEIGHT/2 < CASE_X/2 + WALL_CLEARANCE);
+assert(abs(BATTERY_CONNECTOR_SIDE) == 1);
+assert(BATTERY_RETAINER_CENTER_Z-BATTERY_RETAINER_RADIUS_Z > 0);
+assert(BATTERY_RETAINER_RADIUS_X > BATTERY_RETAINING_TAB_OVERHANG);
 echo("Case width / length", CASE_X+2*WALL_THICKNESS, PCB_Y+2*WALL_THICKNESS);
 echo("Rear depth / screw length", BACK_Z, BACK_SCREW_LENGTH);
 
@@ -246,6 +274,25 @@ module usb(block=false)
     cube([USB_X, USB_Y + y_offset, USB_Z+PCB_Z]);  
 }
 
+// Keep-clear pocket for the side-mounted JST battery connector.  It extends
+// only as far as the inner face of the case wall, so this is not an opening to
+// the outside.  In block mode it stops below the front wall.
+module battery_connector(block=false)
+{
+  connector_inner_x = BATTERY_CONNECTOR_SIDE * PCB_X/2;
+  pocket_inner_x = BATTERY_CONNECTOR_SIDE > 0 ?
+                   connector_inner_x-JST_CONNECTOR_PCB_OVERLAP :
+                   connector_inner_x+JST_CONNECTOR_PCB_OVERLAP;
+  pocket_outer_x = BATTERY_CONNECTOR_SIDE > 0 ?
+                   CASE_X/2+WALL_CLEARANCE :
+                   -CASE_X/2-WALL_CLEARANCE;
+  pocket_left_x = min(pocket_inner_x, pocket_outer_x);
+  pocket_width_x = abs(pocket_outer_x-pocket_inner_x);
+  z = block ? FRONT_Z-FRONT_WALL_THICKNESS : PCB_Z+JST_CONNECTOR_HEIGHT;
+  translate([pocket_left_x, BATTERY_CONNECTOR_Y-JST_CONNECTOR_WIDTH/2, 0])
+    cube([pocket_width_x, JST_CONNECTOR_WIDTH, z]);
+}
+
 
 module pcb(block=false) 
 {
@@ -283,6 +330,7 @@ module espcam(block=false)
   pir(block);
   buttons(block);
   usb(block);
+  battery_connector(block);
 }
 
 module pcb_edge_mount()
@@ -475,12 +523,21 @@ module back_cover()
        cylinder(h=4*z, d=M3_HOLE_DIA, center=true);
         
       }
-      // Battery edge supports, attached to the wider side walls.
-      for (side=[-1,1]) {
-        rail_x = CASE_X/2 + C;
-        translate([side > 0 ? rail_x-1.8 : -rail_x-0.1,
-                   -BATTERY_Y/2+1, BATTERY_SUPPORT_Z-1.2])
-          cube([1.9, BATTERY_Y-2, 1.2]);
+      // Four elliptical retaining ribs grow smoothly out of the side walls.
+      // Only their rounded inner tips overlap the battery corners by 0.8 mm;
+      // the 0.4 mm gap below each rib keeps the pouch loose rather than
+      // clamped.  Extending across each battery end also limits Y movement.
+      for (side=[-1,1], end=[-1,1]) {
+        retainer_y = end > 0 ?
+                     BATTERY_Y/2+BATTERY_CLEARANCE_XY-BATTERY_RETAINING_TAB_WIDTH :
+                     -BATTERY_Y/2-BATTERY_CLEARANCE_XY-BATTERY_END_STOP_DEPTH;
+        translate([side*BATTERY_RETAINER_CENTER_X,
+                   retainer_y,
+                   BATTERY_RETAINER_CENTER_Z])
+          scale([BATTERY_RETAINER_RADIUS_X, 1, BATTERY_RETAINER_RADIUS_Z])
+            rotate([-90,0,0])
+              cylinder(h=BATTERY_RETAINING_TAB_WIDTH+BATTERY_END_STOP_DEPTH,
+                       r=1, $fn=24);
       }
       //overlap
       //left_x, top_y, width_x, height_y, thickness_z, edge_dia, smooth=0
@@ -516,7 +573,12 @@ module back_cover()
        cylinder(h=BACK_SCREW_HEAD_DIA/2,d1=0,d2=BACK_SCREW_HEAD_DIA);
         
       }
-    }  
+    }
+    // Flush countersink for the centre back-mount screw.  This keeps metal
+    // hardware out of the battery contact plane now that the pouch rests on
+    // the rear wall.
+    translate([0,0,BACK_Z-T-0.01])
+      cylinder(h=T+0.02, d1=M3_HEAD_DIA, d2=M3_HOLE_DIA);
   }
  
     
@@ -533,14 +595,27 @@ module overlap()
   }
 }
 
-// Preview only: battery envelope and central short-side wire route.
-// The remaining rear cavity is open, so the wire can bend toward the PCB.
+// Preview only: battery envelope, JST connector and its route around the PCB
+// edge into the rear battery pocket.  Orange geometry is a keep-clear volume.
 module battery_preview() {
-  color("silver") translate([-BATTERY_X/2,-BATTERY_Y/2,BATTERY_BOTTOM_Z])
+  color("silver") translate([-BATTERY_X/2,-BATTERY_Y/2,BATTERY_FRONT_Z])
     cube([BATTERY_X,BATTERY_Y,BATTERY_Z]);
-  color("red") translate([-BATTERY_WIRE_WIDTH/2,BATTERY_Y/2,
-                           BATTERY_BOTTOM_Z])
-    cube([BATTERY_WIRE_WIDTH,BATTERY_WIRE_RUN,BATTERY_WIRE_HEIGHT]);
+  cable_x0 = min(BATTERY_CONNECTOR_SIDE*PCB_X/2, BATTERY_CABLE_X)
+             - BATTERY_CABLE_HEIGHT/2;
+  cable_x1 = max(BATTERY_CONNECTOR_SIDE*PCB_X/2, BATTERY_CABLE_X)
+             + BATTERY_CABLE_HEIGHT/2;
+  cable_z0 = 0;
+  cable_z1 = BATTERY_FRONT_Z;
+  color("orange") {
+    // The first section gets the cable past the board edge.
+    translate([cable_x0, BATTERY_CONNECTOR_Y-BATTERY_CABLE_WIDTH/2,
+               cable_z0])
+      cube([cable_x1-cable_x0, BATTERY_CABLE_WIDTH, BATTERY_CABLE_HEIGHT]);
+    // Then it drops beside the PCB into the rear pocket.
+    translate([BATTERY_CABLE_X-BATTERY_CABLE_HEIGHT/2,
+               BATTERY_CONNECTOR_Y-BATTERY_CABLE_WIDTH/2, cable_z0])
+      cube([BATTERY_CABLE_HEIGHT, BATTERY_CABLE_WIDTH, cable_z1-cable_z0]);
+  }
 }
 
 if ("preview" == TYPE) {
