@@ -22,11 +22,15 @@ h1{font-size:21px;letter-spacing:-.7px;margin:0;line-height:1.2}.tagline{font-si
 h2{font-size:15px;font-weight:600;margin:0}.badge{display:inline-flex;gap:7px;align-items:center;background:#24352a;color:var(--green);padding:5px 10px;border-radius:30px;font-size:11px;font-weight:650;letter-spacing:.02em}
 .badge:before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
 .badge[data-state=offline]{background:#3c2826;color:var(--danger)}.badge[data-state=waiting]{background:#2b3027;color:#d3ccac}
-.viewer{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:18px;background:#080e0b}
-#camera{display:block;width:100%;aspect-ratio:4/3;object-fit:contain;font-size:14px;color:var(--muted)}
+.viewer{position:relative;aspect-ratio:4/3;overflow:hidden;border:1px solid var(--line);border-radius:18px;background:#080e0b}
+#camera{position:absolute;top:50%;left:50%;display:block;width:100%;height:auto;aspect-ratio:4/3;object-fit:contain;font-size:14px;color:var(--muted);transform:translate(-50%,-50%);transform-origin:center}
+.viewer[data-rotation="90"],.viewer[data-rotation="270"]{aspect-ratio:3/4}
+.viewer[data-rotation="90"] #camera{width:133.333%;transform:translate(-50%,-50%) rotate(90deg)}
+.viewer[data-rotation="180"] #camera{transform:translate(-50%,-50%) rotate(180deg)}
+.viewer[data-rotation="270"] #camera{width:133.333%;transform:translate(-50%,-50%) rotate(270deg)}
 .viewer-label{position:absolute;bottom:13px;left:14px;border:1px solid #ffffff24;border-radius:6px;padding:4px 8px;background:#0a130dcc;color:#dfebdf;font-size:10px;letter-spacing:.08em;pointer-events:none}
 .status-line{font-size:12px;color:var(--muted);margin:10px 2px 16px;min-height:18px}
-.actions{display:flex;gap:10px}.actions button{min-height:49px;border-radius:12px;display:flex;align-items:center;justify-content:center;gap:9px;padding:12px 18px;font-weight:650}
+.actions{display:flex;flex-wrap:wrap;gap:10px}.actions button{min-height:49px;border-radius:12px;display:flex;align-items:center;justify-content:center;gap:9px;padding:12px 18px;font-weight:650}
 .primary{flex:1;background:var(--green);color:#162210;border:1px solid var(--green)}.secondary{background:var(--panel);border:1px solid var(--line);color:var(--text)}
 .action-note{font-size:12px;color:var(--muted);margin:10px 2px 0;min-height:20px}.action-note a{margin-left:8px}
 .metrics{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:22px 0 18px}
@@ -52,11 +56,12 @@ footer p{font-size:11px;color:var(--muted);margin:0}.power-button{display:flex;a
 </header>
 <section aria-label="Live camera">
  <div class="view-heading"><h2>In de trailer</h2><span id="badge" class="badge" data-state="waiting">Verbinden</span></div>
- <div class="viewer"><img id="camera" alt="Camerabeeld uit de trailer"><span class="viewer-label">TRAILERCAMERA · 640 × 480</span></div>
+ <div id="viewer" class="viewer"><img id="camera" alt="Camerabeeld uit de trailer"><span class="viewer-label">TRAILERCAMERA · 640 × 480</span></div>
  <p id="status" class="status-line" role="status">Verbinding met de camera maken…</p>
  <div class="actions">
   <button id="capture" class="primary" disabled><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 6h4l2-3h4l2 3h4v14H4z"/><circle cx="12" cy="12.5" r="3.5"/></svg><span id="capture-label">Foto opslaan</span></button>
   <button id="restart" class="secondary"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M20 10a8 8 0 1 0-2 8M20 4v6h-6"/></svg>Opnieuw verbinden</button>
+  <button id="rotate" class="secondary" aria-label="Draai beeld 90 graden met de klok mee"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M20 10a8 8 0 1 0-2 8M20 4v6h-6"/><path d="M12 7v5l3 2"/></svg>Beeld draaien</button>
  </div>
  <p class="action-note" aria-live="polite"><span id="photo-status">Bewaar een camerabeeld op je telefoon.</span><a id="photo-open" hidden target="_blank" rel="noopener">Open foto</a></p>
 </section>
@@ -69,8 +74,14 @@ footer p{font-size:11px;color:var(--muted);margin:0}.power-button{display:flex;a
 </main>
 <script>
 const el=id=>document.getElementById(id);
-const camera=el('camera'), status=el('status');
-let shuttingDown=false, cameraReady=false, capturing=false, photoUrl=null;
+const camera=el('camera'), viewer=el('viewer'), status=el('status');
+let shuttingDown=false, cameraReady=false, capturing=false, photoUrl=null, rotation=0;
+try{rotation=Number(localStorage.getItem('specialcam-rotation'))||0;}catch{}
+function applyRotation(){
+  viewer.dataset.rotation=rotation;
+  el('rotate').setAttribute('aria-label','Draai beeld 90 graden met de klok mee; huidige stand '+rotation+' graden');
+}
+applyRotation();
 function badge(text,state){el('badge').textContent=text;el('badge').dataset.state=state;}
 function syncCapture(){el('capture').disabled=shuttingDown || capturing || !cameraReady;}
 function start(){
@@ -85,6 +96,11 @@ camera.onerror=()=>{
   status.textContent='Beeld onderbroken. Kies opnieuw verbinden.';
 };
 el('restart').onclick=start;
+el('rotate').onclick=()=>{
+  rotation=(rotation+90)%360;
+  applyRotation();
+  try{localStorage.setItem('specialcam-rotation',String(rotation));}catch{}
+};
 el('capture').onclick=async()=>{
   if(shuttingDown || capturing || !cameraReady)return;
   capturing=true;syncCapture();el('capture-label').textContent='Foto maken…';
