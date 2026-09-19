@@ -129,6 +129,29 @@ WALL_THICKNESS = 2.0;
 // Use a thinner wall on front
 FRONT_WALL_THICKNESS = PCB_Z;
 
+// Side strap mounts on the rear cover.  The slots are rounded through-holes
+// sized for a 25 mm Velcro strap.
+// 27 mm clearance accepts Velcro straps up to 25 mm wide.
+VELCRO_STRAP_MAX_WIDTH = 25;
+VELCRO_SLOT_LENGTH = VELCRO_STRAP_MAX_WIDTH + 2;
+VELCRO_SLOT_WIDTH = 4;
+// Extra material around the slot makes the ears project further sideways.
+VELCRO_TAB_SIDE_EDGE = 6;
+VELCRO_TAB_END_EDGE = 4;
+VELCRO_TAB_PROJECTION = VELCRO_SLOT_WIDTH + 2*VELCRO_TAB_SIDE_EDGE;
+VELCRO_TAB_LENGTH = VELCRO_SLOT_LENGTH + 2*VELCRO_TAB_END_EDGE;
+// The ears are deeper than the rear wall for stiffness.  Their outer faces
+// remain flush with the rear face so the whole part rests on the print bed.
+VELCRO_TAB_THICKNESS = 4;
+// Rounded tab roots in the rear-wall plane.  Their centres are offset
+// outward, keeping the rounding inside the existing side-wall width.
+VELCRO_TAB_ROOT_RADIUS = 3;
+// Radius of the added-and-trimmed transition at every tab-to-case corner.
+// The blend is external: neither the original tab nor the case is cut away.
+VELCRO_TAB_CASE_BLEND_RADIUS = 3;
+// Radius of the continuous added-and-trimmed blend along the long case edge.
+VELCRO_TAB_LONG_BLEND_RADIUS = 3;
+
 // Z coordinate of front surface
 FRONT_Z = PIR_BASE_Z + FRONT_WALL_THICKNESS;
 
@@ -166,6 +189,10 @@ assert(abs(BATTERY_CABLE_X) + BATTERY_CABLE_HEIGHT/2 < CASE_X/2 + WALL_CLEARANCE
 assert(abs(BATTERY_CONNECTOR_SIDE) == 1);
 assert(BATTERY_RETAINER_CENTER_Z-BATTERY_RETAINER_RADIUS_Z > 0);
 assert(BATTERY_RETAINER_RADIUS_X > BATTERY_RETAINING_TAB_OVERHANG);
+assert(VELCRO_SLOT_LENGTH > VELCRO_STRAP_MAX_WIDTH);
+assert(VELCRO_TAB_SIDE_EDGE >= WALL_THICKNESS);
+assert(VELCRO_TAB_THICKNESS >= WALL_THICKNESS);
+assert(VELCRO_TAB_ROOT_RADIUS/2 <= WALL_THICKNESS-WALL_CLEARANCE);
 echo("Case width / length", CASE_X+2*WALL_THICKNESS, PCB_Y+2*WALL_THICKNESS);
 echo("Rear depth / screw length", BACK_Z, BACK_SCREW_LENGTH);
 
@@ -248,6 +275,145 @@ module rounded_cube(left_x, top_y, width_x, height_y, thickness_z, edge_dia, smo
       }
             
     }    
+  }
+}
+
+// Rounded rectangular through-hole.  Its long axis is Y so a 25 mm strap
+// passes through the back wall while remaining centred along each long side.
+module rounded_slot(center_x, center_y, width_x, length_y, thickness_z,
+                    bottom_z=0)
+{
+  hull() {
+    for (y = [center_y - length_y/2 + width_x/2,
+              center_y + length_y/2 - width_x/2]) {
+      translate([center_x, y, bottom_z-0.01])
+        cylinder(h=thickness_z + 0.02, d=width_x);
+    }
+  }
+}
+
+// The free perimeter and the two case-side corners of a tab are rounded.
+// The root circles overlap only the outer half of the case wall, replacing
+// right-angle shoulders without entering the battery compartment.
+module velcro_tab_outline(side, projection, length, corner_radius)
+{
+  case_edge_x = side * (CASE_X/2 + WALL_THICKNESS);
+  outer_corner_x = case_edge_x + side * (projection-corner_radius);
+  root_radius = min(VELCRO_TAB_ROOT_RADIUS, corner_radius);
+  root_corner_x = case_edge_x + side * root_radius/2;
+
+  hull() {
+    // These circles overlap the case at the upper and lower attachment
+    // points, producing rounded inside corners instead of sharp shoulders.
+    for (y = [-length/2+root_radius, length/2-root_radius]) {
+      translate([root_corner_x, y]) circle(r=root_radius);
+    }
+
+    for (y = [-length/2+corner_radius, length/2-corner_radius]) {
+      translate([outer_corner_x, y]) circle(r=corner_radius);
+    }
+  }
+}
+
+// Add a small square outside each tab/case corner and remove a quarter circle
+// from that added material.  The remaining concave blend joins the tab to the
+// case without subtracting from either original part.
+module velcro_tab_case_blends(side, length, radius)
+{
+  case_edge_x = side * (CASE_X/2 + WALL_THICKNESS);
+  overlap = 0.05;
+
+  for (end = [-1, 1]) {
+    outer_x = case_edge_x + side*radius;
+    edge_y = end*length/2;
+    outer_y = edge_y + end*radius;
+    left_x = min(case_edge_x, outer_x)-overlap;
+    bottom_y = min(edge_y, outer_y)-overlap;
+
+    difference() {
+      translate([left_x, bottom_y])
+        square([radius+overlap, radius+overlap]);
+      translate([outer_x, outer_y]) circle(r=radius);
+    }
+  }
+}
+
+// The rectangular part of the continuous added-and-trimmed blend, running
+// along the full tab-to-case contact edge.  It is outside both original
+// parts; the common cylindrical cut is applied later to this and the caps.
+module velcro_tab_long_case_blend(side, length, bottom_z, radius)
+{
+  case_edge_x = side * (CASE_X/2 + WALL_THICKNESS);
+  outer_x = case_edge_x + side*radius;
+  x_start = min(case_edge_x, outer_x);
+  cap_overlap = 0.15;
+
+  // Overlap the two rounded end caps slightly.  This avoids a zero-width
+  // tangent seam at the underside of the transition.
+  translate([x_start, -length/2-cap_overlap, bottom_z-radius-cap_overlap])
+    cube([radius, length+2*cap_overlap, radius+cap_overlap]);
+}
+
+// One cylinder trims the long middle strip.  It overlaps the end caps only
+// slightly, leaving their case-side root full so the underside stays joined.
+module velcro_tab_long_case_cove(side, length, bottom_z, radius)
+{
+  case_edge_x = side * (CASE_X/2 + WALL_THICKNESS);
+  outer_x = case_edge_x + side*radius;
+  cap_overlap = 0.15;
+
+  translate([outer_x, length/2+cap_overlap, bottom_z-radius])
+    rotate([90, 0, 0]) cylinder(h=length+2*cap_overlap, r=radius);
+}
+
+// Flatten the small case-side strip that meets a tab.  The cover remains
+// rounded everywhere else, but this strip gives the tab and its blend a
+// straight, predictable mating face.  It occupies only existing side-wall
+// material and cannot intrude into the battery compartment.
+module velcro_case_contact_pad(side, length)
+{
+  patch_width = WALL_THICKNESS-WALL_CLEARANCE;
+  patch_left_x = side < 0 ?
+                 -CASE_X/2-WALL_THICKNESS :
+                  CASE_X/2+WALL_CLEARANCE;
+  pad_bottom_z = BACK_Z-VELCRO_TAB_THICKNESS-VELCRO_TAB_LONG_BLEND_RADIUS;
+
+  translate([patch_left_x, -length/2, pad_bottom_z])
+    cube([patch_width,
+          length,
+          BACK_Z-pad_bottom_z]);
+}
+
+// Two side ears for a single Velcro strap.  They project sideways from the
+// rear wall while their outer faces remain flush with it.  No reinforcing
+// material extends inboard of the side wall, preserving battery clearance.
+module velcro_side_tabs()
+{
+  tab_bottom_z = BACK_Z-VELCRO_TAB_THICKNESS;
+  slot_bottom_z = tab_bottom_z-VELCRO_TAB_LONG_BLEND_RADIUS;
+  slot_height = VELCRO_TAB_THICKNESS+VELCRO_TAB_LONG_BLEND_RADIUS;
+  tab_corner_radius = min(VELCRO_TAB_SIDE_EDGE, VELCRO_TAB_LENGTH/2);
+
+  for (side = [-1, 1]) {
+    // Cut the strap slot from the completed ear itself.  Keeping the cut
+    // local prevents any later union/hull operation from closing it again.
+    difference() {
+      hull() {
+        translate([0, 0, tab_bottom_z]) linear_extrude(height=VELCRO_TAB_THICKNESS)
+          velcro_tab_outline(side,
+                             VELCRO_TAB_PROJECTION,
+                             VELCRO_TAB_LENGTH,
+                             tab_corner_radius);
+        velcro_case_contact_pad(side, VELCRO_TAB_LENGTH);
+      }
+      rounded_slot(side * (CASE_X/2 + WALL_THICKNESS +
+                           VELCRO_TAB_PROJECTION/2),
+                   0,
+                   VELCRO_SLOT_WIDTH,
+                   VELCRO_SLOT_LENGTH,
+                   slot_height,
+                   slot_bottom_z);
+    }
   }
 }
 
@@ -523,6 +689,15 @@ module back_cover()
        cylinder(h=4*z, d=M3_HOLE_DIA, center=true);
         
       }
+      // Locally remove the cover-edge rounding where each tab and its blend
+      // meet the case, while preserving the rounded case outside this strip.
+      for (side = [-1, 1]) {
+        velcro_case_contact_pad(side,
+                                VELCRO_TAB_LENGTH+
+                                2*VELCRO_TAB_CASE_BLEND_RADIUS);
+      }
+      // Rear-flush, integral side ears for a 25 mm Velcro strap.
+      velcro_side_tabs();
       // Four elliptical retaining ribs grow smoothly out of the side walls.
       // Only their rounded inner tips overlap the battery corners by 0.8 mm;
       // the 0.4 mm gap below each rib keeps the pouch loose rather than
@@ -579,6 +754,17 @@ module back_cover()
     // the rear wall.
     translate([0,0,BACK_Z-T-0.01])
       cylinder(h=T+0.02, d1=M3_HEAD_DIA, d2=M3_HOLE_DIA);
+
+    // The slots run through the thicker ears.  Their outer faces remain in
+    // the rear-wall print plane, so no support or bridge is required.
+    for (side = [-1, 1]) {
+      rounded_slot(side * (CASE_X/2 + T + VELCRO_TAB_PROJECTION/2),
+                   0,
+                   VELCRO_SLOT_WIDTH,
+                   VELCRO_SLOT_LENGTH,
+                   VELCRO_TAB_THICKNESS,
+                   BACK_Z-VELCRO_TAB_THICKNESS);
+    }
   }
  
     
